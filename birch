@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+# birch - an irc client in pure bash.
+
+setup_terminal() {
+    printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+    stty -echo
+}
+
+reset_terminal() {
+    printf '\e[2J\e[;r\e[?25h\e[?1049l'
+    stty echo
+}
+
+get_term_size() {
+    read -r LINES COLUMNS < <(stty size)
+}
+
+setup_irc() {
+    host="127.0.0.1"
+    chan="#home"
+
+    exec 69>&-
+    exec 69<>"/dev/tcp/${host}/6667"
+
+    printf 'NICK %s\n' "dogboy12" >&69
+    printf 'USER black black 127.0.0.1 bones\n' >&69
+    printf 'PASS %s\n' "$BIRCH_PASS" >&69
+    printf 'JOIN %s\n' "$chan" >&69
+}
+
+print_msg() {
+    [[ $1 != "$nick" ]] &&
+        printf '\e[38;5;%sm' "${#1}"
+
+    printf '\e[1m%s\e[m: %s\n' "$1" "$2"
+}
+
+irc_receive() {
+    while IFS='' read -srt "${1:-5}" -u 69; do
+        case "$REPLY" in
+            PING*)
+                printf 'PONG %s\n' "${REPLY/PING }" >&69
+            ;;
+
+            ":$host NICK "*)
+                nick="${REPLY/*NICK }"
+                nick="${nick//[[:space:]]}"
+            ;;
+
+            ":$host"*) ;;
+
+            *)
+                user="${REPLY%%\!*}"
+                user="${user:1}"
+                mesg="${REPLY/*PRIVMSG ${chan} }"
+                mesg="${mesg/#:}"
+                mesg="${mesg//$'\r'}"
+
+                [[ -z $mesg ]] &&
+                    continue
+
+                print_msg "$user" "$mesg"
+            ;;
+        esac
+    done
+}
+
+irc_send() {
+    while IFS= read -rst1 -n1 -p $'\e7\e[999B\r\e[K➜ '"$msg"$'\e[47m \e[m\e8'; do
+        case "$REPLY" in
+            $'\177'|$'\b')
+                msg="${msg%?}"
+            ;;
+
+            "")
+                case "$msg" in
+                    '/join'*)
+                        printf 'JOIN %s\n' "${msg/\/join }" >&69
+                    ;;
+
+                    "") ;;
+
+                    *)
+                        printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
+                        print_msg "$nick" "$msg"
+                    ;;
+                esac
+
+                msg=
+                break
+            ;;
+
+            [[:print:]])
+                msg+="$REPLY"
+            ;;
+        esac
+    done
+
+    irc_receive 0.01
+}
+
+main() {
+    [[ $1 == -v ]] && {
+        printf '%s\n' "birch 0.0.1"
+        exit
+    }
+
+    trap 'reset_terminal' EXIT
+
+    get_term_size
+    setup_terminal
+    setup_irc
+    irc_receive
+
+    for ((;;)); {
+        irc_send
+    }
+}
+
+main "$@"
