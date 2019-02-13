@@ -16,6 +16,21 @@ usage: [birch -s host -u nick [-p pass -c channel]]
         -c channel     Channel to join.
 ```
 
+## Implemented Commands
+
+- `/join #channel`
+- `/nick nick`
+
+## TODO
+
+- [ ] Add more IRC commands.
+- [ ] Add TAB completion for channels.
+- [ ] Add formatting
+    - [x] `bold`
+    - [ ] `italics`
+    - [ ] `underline`
+    - [ ] `colors`
+
 ## Installation
 
 - Add `birch` to your path.
