@@ -30,8 +30,8 @@ setup_irc() {
     exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667" || exit 1
 
-    printf 'NICK %s\n' "${nick:=${user:-${USER}}}" >&69
-    printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
+    printf 'NICK %s\n' "$nick" >&69
+    printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
 }
@@ -122,7 +122,7 @@ get_args() {
     while getopts ":s:u:p:c:v" opt; do
         case "$opt" in
             's') host="$OPTARG" ;;
-            'u') user="$OPTARG" ;;
+            'u') nick="$OPTARG" ;;
             'p') pass="$OPTARG" ;;
             'c') chan="$OPTARG" ;;
             '?') usage ;;
@@ -139,15 +139,15 @@ get_args() {
         esac
     done
 
-    [[ -z $host || -z $user ]] &&
+    [[ -z $host || -z $nick ]] &&
         usage
 }
 
 usage() {
     printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
-        "usage: [birch -s host -u user [-p pass -c channel]]" \
+        "usage: [birch -s host -u nick [-p pass -c channel]]" \
         "-s server      Server to connect to (required)." \
-        "-u user        Username to use (required)." \
+        "-u nick        Username to use (required)." \
         "-p password    Password to use." \
         "-c channel     Channel to join."
     exit 1
