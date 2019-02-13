@@ -20,8 +20,8 @@ redraw() {
     hist_arr="hist_${chan//[^a-zA-Z0-9=\\;]/_}"
     IFS=$'\n' read -d "" -ra hist <<< "${!hist_arr}"
 
-    for ((i=${#hist[@]};i>0;i--)); {
-        ((${#hist[@]}-i > LINES-1)) &&
+    for ((i=LINES;i>0;i--)); {
+        [[ ${hist[-i]} ]] &&
             printf '%s\n' "${hist[-i]}"
     }
 }
