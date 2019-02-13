@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# birch - an irc client written in pure bash.
+# birch - an IRC client written in pure bash.
 
 setup_terminal() {
     printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
