@@ -4,10 +4,12 @@
 
 setup_terminal() {
     printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+    stty -echo
 }
 
 reset_terminal() {
     printf '\e[2J\e[;r\e[?25h\e[?1049l'
+    stty echo
 }
 
 get_term_size() {
@@ -80,7 +82,7 @@ irc_receive() {
 }
 
 irc_send() {
-    printf '\e7\e[%sH\e[A\e[K\e[B\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
 
     read -rst 0.01 -n 1 &&
         case "$REPLY" in
@@ -99,6 +101,12 @@ irc_send() {
                     '/nick'*)
                         printf 'NICK %s\n' "${msg/\/nick }" >&69
                         nick="$_"
+                    ;;
+
+                    '/quit'*)
+                        printf 'QUIT :%s\n' "${msg/\/quit }" >&69
+                        exec 69>&-
+                        exit
                     ;;
 
                     "") ;;
@@ -156,7 +164,7 @@ usage() {
 main() {
     get_args "$@"
 
-    trap 'reset_terminal' EXIT
+    trap 'reset_terminal; exec 69>&-' EXIT
     trap 'get_term_size; redraw' WINCH
 
     get_term_size
