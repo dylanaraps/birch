@@ -3,13 +3,23 @@
 # birch - an irc client written in pure bash.
 
 setup_terminal() {
-    printf '\e[?1049h\e[?25l\e[2J'
+    printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
     stty -echo
 }
 
 reset_terminal() {
-    printf '\e[2J\e[;r\e[?25h\e[?1049l'
+    printf '\e[2J\e[;r\e[?25h\e[?1049l\e[;r'
     stty echo
+}
+
+get_term_size() {
+    shopt -s checkwinsize; (:;:)
+}
+
+redraw() {
+    hist="${1:-hist_${join:1}}"
+    hist="${hist//[^a-zA-Z0-9\\;]/_}"
+    printf '\e[2J\e[1;%sr%s' "$((LINES-1))" "${!hist}"
 }
 
 setup_irc() {
@@ -33,7 +43,8 @@ print_msg() {
     printf '%s' "$msgs"
 
     # Log channel history.
-    declare -g "${join:1}_hist+=${msgs}"
+    hist_name="${join//[^a-zA-Z0-9\\;]/_}"
+    declare -g "hist_${hist_name:1}+=${msgs}"
 }
 
 irc_receive() {
@@ -44,33 +55,26 @@ irc_receive() {
             ;;
 
             ":$host NICK "*)
-                nick="${REPLY/*NICK }"
-                nick="${nick//[[:space:]]}"
+                read -r _ nick _ <<< "$REPLY"
             ;;
 
-            *"$join"*)
-                user="${REPLY%%\!*}"
-                user="${user:1}"
-                mesg="${REPLY/*PRIVMSG ${join} }"
-                mesg="${mesg//[^[:print:]]}"
-                mesg="${mesg/#:}"
+            :*"$join"*)
+                IFS='!:' read -r _ user _ <<< "$REPLY"
+                IFS=' :' read -r _ _ _ _ mesg <<< "${REPLY//::/$'\072\072'}"
 
-                # TODO: Properly parse colors.
-                mesg="${mesg//02\@/\@}"
-                mesg="${mesg//05:/:}"
+                # Bold.
+                mesg="${mesg/$'02'/$'\e[1m'}"
+                mesg="${mesg/$''/$'\e[m'}"
 
-                [[ -z $mesg ]] &&
-                    continue
-
-                print_msg "$user" "$mesg"
+                [[ -n $mesg ]] &&
+                    print_msg "$user" "$mesg"
             ;;
         esac
     done
 }
 
 irc_send() {
-    while IFS= read -rst 0.1 -n 1 \
-                    -p $'\e7\e[999B\r\e[K'"$join > $msg"$'\e[47m \e[m\e8'; do
+    read -rst 0.1 -n 1 -p $'\e7\e[999B\r\e[K'"$nick $join > $msg"$'\e[47m \e[m\e8' &&
         case "$REPLY" in
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -86,10 +90,7 @@ irc_send() {
 
                         case "$cmd" in
                             # Print channel history.
-                            join)
-                                hist="${msg/\/${cmd} \#}_hist"
-                                printf '%s' "${!hist}"
-                            ;;
+                            join) redraw "hist_${msg/\/${cmd} \#}" ;;
                         esac
                     ;;
 
@@ -102,18 +103,12 @@ irc_send() {
                 esac
 
                 msg=
-                break
             ;;
 
             [[:print:]])
                 msg+="$REPLY"
             ;;
         esac
-
-        irc_receive 0.1
-    done
-
-    irc_receive 0.1
 }
 
 get_args() {
@@ -155,13 +150,16 @@ main() {
     get_args "$@"
 
     trap 'reset_terminal; printf "%s\n" "${err[@]}" >&2' EXIT
+    trap 'get_term_size; redraw' WINCH
 
+    get_term_size
     setup_terminal
     setup_irc
     irc_receive
 
     for ((;;)); {
         irc_send
+        irc_receive 0.1 &
     }
 }
 
