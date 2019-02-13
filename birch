@@ -17,16 +17,15 @@ get_term_size() {
 }
 
 setup_irc() {
-    host="127.0.0.1"
-    join="#home"
-
     exec 69>&-
-    exec 69<>"/dev/tcp/${host}/6667"
+    exec 69<>"/dev/tcp/${host}/6667" || exit 1
 
-    printf 'NICK %s\n' "dogboy12" >&69
-    printf 'USER black black 127.0.0.1 bones\n' >&69
-    printf 'PASS %s\n' "$BIRCH_PASS" >&69
-    printf 'JOIN %s\n' "$join" >&69
+    {
+        printf 'NICK %s\n' "${user:-${USER}}"
+        printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME"
+        printf 'PASS %s\n' "$pass"
+        printf 'JOIN %s\n' "$join"
+    } >&69
 }
 
 print_msg() {
@@ -115,16 +114,55 @@ irc_send() {
                 msg+="$REPLY"
             ;;
         esac
+
+        irc_receive 0.1
     done
 
     irc_receive 0.1
 }
 
-main() {
-    [[ $1 == -v ]] && {
-        printf '%s\n' "birch 0.0.1"
-        exit
+get_args() {
+    while getopts ":s:u:p:c:v" opt; do
+        case "$opt" in
+            s) host="$OPTARG" ;;
+            u) user="$OPTARG" ;;
+            p) pass="$OPTARG" ;;
+            c) join="$OPTARG" ;;
+
+            v)
+                printf '%s\n' "birch 0.0.1"
+                exit
+            ;;
+
+            \?)
+                usage
+                exit
+            ;;
+
+            :)
+                printf '%s\n' "Option -$OPTARG requires an argument." >&2
+                exit 1
+            ;;
+        esac
+    done
+
+    [[ -z $host ]] && {
+        usage
+        exit 1
     }
+}
+
+usage() {
+    printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
+        "usage: [birch -s host -u user -p pass -c channel]" \
+        "-s server      Server to connect to." \
+        "-u user        Username to use." \
+        "-p password    Password to use." \
+        "-c channel     Channel to join."
+}
+
+main() {
+    get_args "$@"
 
     trap 'reset_terminal' EXIT
 
