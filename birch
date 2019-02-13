@@ -20,12 +20,10 @@ setup_irc() {
     exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667" || exit 1
 
-    {
-        printf 'NICK %s\n' "${user:-${USER}}"
-        printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME"
-        printf 'PASS %s\n' "$pass"
-        printf 'JOIN %s\n' "$join"
-    } >&69
+    printf 'NICK %s\n' "${user:-${USER}}" >&69
+    printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
+    printf 'PASS %s\n' "$pass" >&69
+    printf 'JOIN %s\n' "$join" >&69
 }
 
 print_msg() {
