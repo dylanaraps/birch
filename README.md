@@ -31,6 +31,10 @@ usage: [birch -s host -u nick [-p pass -c channel]]
     - [ ] `underline`
     - [ ] `colors`
 
+## Dependencies
+
+- `bash 4+`
+
 ## Installation
 
 - Add `birch` to your path.
