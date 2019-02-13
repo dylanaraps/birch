@@ -4,12 +4,10 @@
 
 setup_terminal() {
     printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
-    stty -echo
 }
 
 reset_terminal() {
     printf '\e[2J\e[;r\e[?25h\e[?1049l\e[;r'
-    stty echo
 }
 
 get_term_size() {
@@ -45,10 +43,9 @@ print_msg() {
     [[ $1 != "$nick" ]] &&
         local nick_color="\\e[38;5;${#1}m"
 
-    printf -v msgs '\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
+    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
     printf '%s' "$msgs"
 
-    # Log messages for history.
     declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=${msgs}"
 }
 
@@ -78,7 +75,8 @@ irc_receive() {
 }
 
 irc_send() {
-    read -rst 0.01 -n 1 -p $'\e7\e[999B\r\e[K'"$chan > $msg"$'\e[47m \e[m\e8' &&
+    printf '\e7\e[%sH\e[A\e[K\e[B\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+    read -rst 0.01 -n 1 &&
         case "$REPLY" in
             $'\177'|$'\b')
                 msg="${msg%?}"
