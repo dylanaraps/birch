@@ -18,7 +18,6 @@ get_term_size() {
 
 redraw() {
     printf '\e[2J\e[1;%sr' "$((LINES-1))"
-
     hist_arr="hist_${chan//[^a-zA-Z0-9=\\;]/_}"
     IFS=$'\n' read -d "" -ra hist <<< "${!hist_arr}"
     printf '%s\n' "${hist[@]: -$((LINES-1))}"
