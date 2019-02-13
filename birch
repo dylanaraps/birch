@@ -20,8 +20,8 @@ redraw() {
     hist_arr="hist_${chan//[^a-zA-Z0-9=\\;]/_}"
     IFS=$'\n' read -d "" -ra hist <<< "${!hist_arr}"
 
-    for ((i=LINES;i>0;i--)); {
-        [[ ${hist[-i]} ]] &&
+    for ((i=${#hist[@]};i>0;i--)); {
+        ((${#hist[@]}+LINES-1!=LINES-1)) &&
             printf '%s\n' "${hist[-i]}"
     }
 }
@@ -30,20 +30,26 @@ setup_irc() {
     exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667" || exit 1
 
-    printf 'NICK %s\n' "${user:-${USER}}" >&69
+    printf 'NICK %s\n' "${nick:=${user:-${USER}}}" >&69
     printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
 }
 
 print_msg() {
-    [[ $1 != "$nick" ]] &&
-        local nick_color="\\e[38;5;${#1}m"
+    case "$1" in
+        msg)
+            [[ $1 != "$nick" ]] &&
+                local nick_color="\\e[38;5;${#2}m"
 
-    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
+            printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$2" "$3"
+        ;;
+
+        *) printf -v msgs '\r%s\n' "$1" ;;
+    esac
+
     printf '%s' "$msgs"
-
-    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=${msgs}"
+    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=$msgs"
 }
 
 irc_receive() {
@@ -53,26 +59,29 @@ irc_receive() {
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            ":$host NICK"*)
+            ":"*"$host NICK"*)
                 IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
             ;;
 
             :*"PRIVMSG $chan"*)
                 IFS='!:' read -r _ user _ <<< "$REPLY"
-                IFS=' :' read -r _ _ _ _ mesg <<< "${REPLY//::/$'\072\072'}"
+                IFS=' :' read -r _ _ _ _ mesg <<< "$REPLY"
 
                 # Bold.
-                mesg="${mesg/$'02'/$'\e[1m'}"
-                mesg="${mesg/$''/$'\e[m'}"
+                mesg="${mesg/$'\00302\002'/$'\e[1m'}"
+                mesg="${mesg/$'\003\002'/$'\e[m'}"
 
                 [[ -n $mesg ]] &&
-                    print_msg "$user" "$mesg"
+                    print_msg msg "$user" "$mesg"
             ;;
+
+            *) print_msg "${REPLY/*:}" ;;
         esac
 }
 
 irc_send() {
     printf '\e7\e[%sH\e[A\e[K\e[B\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+
     read -rst 0.01 -n 1 &&
         case "$REPLY" in
             $'\177'|$'\b')
@@ -96,7 +105,7 @@ irc_send() {
 
                     *)
                         printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
-                        print_msg "$nick" "$msg"
+                        print_msg msg "$nick" "$msg"
                     ;;
                 esac
 
@@ -130,15 +139,15 @@ get_args() {
         esac
     done
 
-    [[ -z $host ]] &&
+    [[ -z $host || -z $user ]] &&
         usage
 }
 
 usage() {
     printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
-        "usage: [birch -s host -u user -p pass -c channel]" \
-        "-s server      Server to connect to." \
-        "-u user        Username to use." \
+        "usage: [birch -s host -u user [-p pass -c channel]]" \
+        "-s server      Server to connect to (required)." \
+        "-u user        Username to use (required)." \
         "-p password    Password to use." \
         "-c channel     Channel to join."
     exit 1
