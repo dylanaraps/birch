@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# birch - an irc client in pure bash.
+# birch - an irc client written in pure bash.
 
 setup_terminal() {
-    printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+    printf '\e[?1049h\e[?25l\e[2J'
     stty -echo
 }
 
@@ -12,13 +12,12 @@ reset_terminal() {
     stty echo
 }
 
-get_term_size() {
-    read -r LINES COLUMNS < <(stty size)
-}
-
 setup_irc() {
     exec 69>&-
-    exec 69<>"/dev/tcp/${host}/6667" || exit 1
+    exec 69<>"/dev/tcp/${host}/6667" || {
+        err+=("error: Couldn't connect to ${host}")
+        exit 1
+    }
 
     printf 'NICK %s\n' "${user:-${USER}}" >&69
     printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
@@ -48,8 +47,6 @@ irc_receive() {
                 nick="${REPLY/*NICK }"
                 nick="${nick//[[:space:]]}"
             ;;
-
-            ":$host"*) ;;
 
             *"$join"*)
                 user="${REPLY%%\!*}"
@@ -122,18 +119,14 @@ irc_send() {
 get_args() {
     while getopts ":s:u:p:c:v" opt; do
         case "$opt" in
-            s) host="$OPTARG" ;;
-            u) user="$OPTARG" ;;
-            p) pass="$OPTARG" ;;
-            c) join="$OPTARG" ;;
+            's') host="$OPTARG" ;;
+            'u') user="$OPTARG" ;;
+            'p') pass="$OPTARG" ;;
+            'c') join="$OPTARG" ;;
+            '?') usage ;;
 
             v)
                 printf '%s\n' "birch 0.0.1"
-                exit
-            ;;
-
-            \?)
-                usage
                 exit
             ;;
 
@@ -144,10 +137,8 @@ get_args() {
         esac
     done
 
-    [[ -z $host ]] && {
+    [[ -z $host ]] &&
         usage
-        exit 1
-    }
 }
 
 usage() {
@@ -157,14 +148,14 @@ usage() {
         "-u user        Username to use." \
         "-p password    Password to use." \
         "-c channel     Channel to join."
+    exit 1
 }
 
 main() {
     get_args "$@"
 
-    trap 'reset_terminal' EXIT
+    trap 'reset_terminal; printf "%s\n" "${err[@]}"' EXIT
 
-    get_term_size
     setup_terminal
     setup_irc
     irc_receive
