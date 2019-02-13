@@ -103,12 +103,6 @@ irc_send() {
                         nick="$_"
                     ;;
 
-                    '/quit'*)
-                        printf 'QUIT :%s\n' "${msg/\/quit }" >&69
-                        exec 69>&-
-                        exit
-                    ;;
-
                     "") ;;
 
                     *)
