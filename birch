@@ -31,9 +31,11 @@ setup_irc() {
 
 print_msg() {
     [[ $1 != "$nick" ]] &&
-        printf '\e[38;5;%sm' "${#1}"
+        local nick_color="\\e[38;5;${#1}m"
 
-    printf '\e[1m%s\e[m: %s\n' "$1" "$2"
+    printf -v msgs '\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
+    printf '%s' "$msgs"
+    declare -g "${join:1}_hist+=${msgs}"
 }
 
 irc_receive() {
@@ -85,6 +87,13 @@ irc_send() {
                         cmd="${cmd:1}"
                         declare -g "${cmd}=${msg/\/${cmd} }"
                         printf '%s %s\n' "${cmd^^}" "${msg/\/${cmd} }" >&69
+
+                        case "$cmd" in
+                            join)
+                                hist="${msg/\/${cmd} \#}_hist"
+                                printf '%s' "${!hist}"
+                            ;;
+                        esac
                     ;;
 
                     "") ;;
