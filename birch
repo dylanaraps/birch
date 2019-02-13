@@ -17,9 +17,15 @@ get_term_size() {
 }
 
 redraw() {
-    hist="${1:-hist_${join:1}}"
-    hist="${hist//[^a-zA-Z0-9\\;]/_}"
-    printf '\e[2J\e[1;%sr%s' "$((LINES-1))" "${!hist}"
+    printf '\e[2J\e[1;%sr' "$((LINES-1))"
+
+    hist_arr="hist_${chan//[^a-zA-Z0-9=\\;]/_}"
+    IFS=$'\n' read -d "" -ra hist <<< "${!hist_arr}"
+
+    for ((i=${#hist[@]};i>0;i--)); {
+        ((${#hist[@]}-i > LINES-1)) &&
+            printf '%s\n' "${hist[-i]}"
+    }
 }
 
 setup_irc() {
@@ -32,7 +38,7 @@ setup_irc() {
     printf 'NICK %s\n' "${user:-${USER}}" >&69
     printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
     printf 'PASS %s\n' "$pass" >&69
-    printf 'JOIN %s\n' "$join" >&69
+    printf 'JOIN %s\n' "$chan" >&69
 }
 
 print_msg() {
@@ -42,23 +48,22 @@ print_msg() {
     printf -v msgs '\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
     printf '%s' "$msgs"
 
-    # Log channel history.
-    hist_name="${join//[^a-zA-Z0-9\\;]/_}"
-    declare -g "hist_${hist_name:1}+=${msgs}"
+    # Log messages for history.
+    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=${msgs}"
 }
 
 irc_receive() {
-    while IFS='' read -srt "${1:-1}" -u 69; do
+    read -srt "${1:-0.001}" -u 69 &&
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            ":$host NICK "*)
-                read -r _ nick _ <<< "$REPLY"
+            ":$host NICK"*)
+                IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
             ;;
 
-            :*"$join"*)
+            :*"$chan"*)
                 IFS='!:' read -r _ user _ <<< "$REPLY"
                 IFS=' :' read -r _ _ _ _ mesg <<< "${REPLY//::/$'\072\072'}"
 
@@ -70,11 +75,10 @@ irc_receive() {
                     print_msg "$user" "$mesg"
             ;;
         esac
-    done
 }
 
 irc_send() {
-    read -rst 0.1 -n 1 -p $'\e7\e[999B\r\e[K'"$nick $join > $msg"$'\e[47m \e[m\e8' &&
+    read -rst 0.01 -n 1 -p $'\e7\e[999B\r\e[K'"$chan > $msg"$'\e[47m \e[m\e8' &&
         case "$REPLY" in
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -82,22 +86,21 @@ irc_send() {
 
             "")
                 case "$msg" in
-                    '/'*)
-                        cmd="${msg/ *}"
-                        cmd="${cmd:1}"
-                        declare -g "${cmd}=${msg/\/${cmd} }"
-                        printf '%s %s\n' "${cmd^^}" "${msg/\/${cmd} }" >&69
+                    '/join'*)
+                        printf 'JOIN %s\n' "${msg/\/join }" >&69
+                        chan="$_"
+                        redraw
+                    ;;
 
-                        case "$cmd" in
-                            # Print channel history.
-                            join) redraw "hist_${msg/\/${cmd} \#}" ;;
-                        esac
+                    '/nick'*)
+                        printf 'NICK %s\n' "${msg/\/nick }" >&69
+                        nick="$_"
                     ;;
 
                     "") ;;
 
                     *)
-                        printf 'PRIVMSG %s %s\n' "$join" ":$msg" >&69
+                        printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
                         print_msg "$nick" "$msg"
                     ;;
                 esac
@@ -117,7 +120,7 @@ get_args() {
             's') host="$OPTARG" ;;
             'u') user="$OPTARG" ;;
             'p') pass="$OPTARG" ;;
-            'c') join="$OPTARG" ;;
+            'c') chan="$OPTARG" ;;
             '?') usage ;;
 
             v)
@@ -155,11 +158,11 @@ main() {
     get_term_size
     setup_terminal
     setup_irc
-    irc_receive
+    irc_receive 2
 
     for ((;;)); {
         irc_send
-        irc_receive 0.1 &
+        irc_receive
     }
 }
 
