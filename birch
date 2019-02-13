@@ -35,6 +35,8 @@ print_msg() {
 
     printf -v msgs '\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
     printf '%s' "$msgs"
+
+    # Log channel history.
     declare -g "${join:1}_hist+=${msgs}"
 }
 
@@ -73,7 +75,7 @@ irc_receive() {
 }
 
 irc_send() {
-    while IFS= read -rst 1 -n 1 \
+    while IFS= read -rst 0.1 -n 1 \
                     -p $'\e7\e[999B\r\e[K'"$join > $msg"$'\e[47m \e[m\e8'; do
         case "$REPLY" in
             $'\177'|$'\b')
@@ -89,6 +91,7 @@ irc_send() {
                         printf '%s %s\n' "${cmd^^}" "${msg/\/${cmd} }" >&69
 
                         case "$cmd" in
+                            # Print channel history.
                             join)
                                 hist="${msg/\/${cmd} \#}_hist"
                                 printf '%s' "${!hist}"
@@ -114,7 +117,7 @@ irc_send() {
         esac
     done
 
-    irc_receive 0.3
+    irc_receive 0.1
 }
 
 main() {
@@ -131,7 +134,6 @@ main() {
     irc_receive
 
     for ((;;)); {
-        irc_receive 0.1
         irc_send
     }
 }
