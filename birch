@@ -18,7 +18,7 @@ get_term_size() {
 
 setup_irc() {
     host="127.0.0.1"
-    chan="#home"
+    join="#home"
 
     exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667"
@@ -26,7 +26,7 @@ setup_irc() {
     printf 'NICK %s\n' "dogboy12" >&69
     printf 'USER black black 127.0.0.1 bones\n' >&69
     printf 'PASS %s\n' "$BIRCH_PASS" >&69
-    printf 'JOIN %s\n' "$chan" >&69
+    printf 'JOIN %s\n' "$join" >&69
 }
 
 print_msg() {
@@ -37,7 +37,7 @@ print_msg() {
 }
 
 irc_receive() {
-    while IFS='' read -srt "${1:-5}" -u 69; do
+    while IFS='' read -srt "${1:-1}" -u 69; do
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
@@ -50,12 +50,16 @@ irc_receive() {
 
             ":$host"*) ;;
 
-            *)
+            *"$join"*)
                 user="${REPLY%%\!*}"
                 user="${user:1}"
-                mesg="${REPLY/*PRIVMSG ${chan} }"
+                mesg="${REPLY/*PRIVMSG ${join} }"
+                mesg="${mesg//[^[:print:]]}"
                 mesg="${mesg/#:}"
-                mesg="${mesg//$'\r'}"
+
+                # TODO: Properly parse colors.
+                mesg="${mesg//02\@/\@}"
+                mesg="${mesg//05:/:}"
 
                 [[ -z $mesg ]] &&
                     continue
@@ -67,7 +71,8 @@ irc_receive() {
 }
 
 irc_send() {
-    while IFS= read -rst1 -n1 -p $'\e7\e[999B\r\e[K➜ '"$msg"$'\e[47m \e[m\e8'; do
+    while IFS= read -rst 1 -n 1 \
+                    -p $'\e7\e[999B\r\e[K'"$join > $msg"$'\e[47m \e[m\e8'; do
         case "$REPLY" in
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -75,14 +80,17 @@ irc_send() {
 
             "")
                 case "$msg" in
-                    '/join'*)
-                        printf 'JOIN %s\n' "${msg/\/join }" >&69
+                    '/'*)
+                        cmd="${msg/ *}"
+                        cmd="${cmd:1}"
+                        declare -g "${cmd}=${msg/\/${cmd} }"
+                        printf '%s %s\n' "${cmd^^}" "${msg/\/${cmd} }" >&69
                     ;;
 
                     "") ;;
 
                     *)
-                        printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
+                        printf 'PRIVMSG %s %s\n' "$join" ":$msg" >&69
                         print_msg "$nick" "$msg"
                     ;;
                 esac
@@ -97,7 +105,7 @@ irc_send() {
         esac
     done
 
-    irc_receive 0.01
+    irc_receive 0.3
 }
 
 main() {
@@ -114,6 +122,7 @@ main() {
     irc_receive
 
     for ((;;)); {
+        irc_receive 0.1
         irc_send
     }
 }
