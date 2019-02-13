@@ -7,7 +7,7 @@ setup_terminal() {
 }
 
 reset_terminal() {
-    printf '\e[2J\e[;r\e[?25h\e[?1049l\e[;r'
+    printf '\e[2J\e[;r\e[?25h\e[?1049l'
 }
 
 get_term_size() {
@@ -28,10 +28,7 @@ redraw() {
 
 setup_irc() {
     exec 69>&-
-    exec 69<>"/dev/tcp/${host}/6667" || {
-        err+=("error: Couldn't connect to ${host}.")
-        exit 1
-    }
+    exec 69<>"/dev/tcp/${host}/6667" || exit 1
 
     printf 'NICK %s\n' "${user:-${USER}}" >&69
     printf 'USER %s 127.0.0.1 %s\n' "$USER $USER" "$HOSTNAME" >&69
@@ -150,7 +147,7 @@ usage() {
 main() {
     get_args "$@"
 
-    trap 'reset_terminal; printf "%s\n" "${err[@]}" >&2' EXIT
+    trap 'reset_terminal' EXIT
     trap 'get_term_size; redraw' WINCH
 
     get_term_size
