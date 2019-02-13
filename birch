@@ -158,7 +158,6 @@ main() {
     get_term_size
     setup_terminal
     setup_irc
-    irc_receive 2
 
     for ((;;)); {
         irc_send
