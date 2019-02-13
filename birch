@@ -15,7 +15,7 @@ reset_terminal() {
 setup_irc() {
     exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667" || {
-        err+=("error: Couldn't connect to ${host}")
+        err+=("error: Couldn't connect to ${host}.")
         exit 1
     }
 
@@ -154,7 +154,7 @@ usage() {
 main() {
     get_args "$@"
 
-    trap 'reset_terminal; printf "%s\n" "${err[@]}"' EXIT
+    trap 'reset_terminal; printf "%s\n" "${err[@]}" >&2' EXIT
 
     setup_terminal
     setup_irc
