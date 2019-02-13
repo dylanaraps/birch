@@ -1,0 +1,34 @@
+# birch
+
+<a href="https://travis-ci.org/dylanaraps/birch"><img src="https://travis-ci.org/dylanaraps/birch.svg?branch=master"></a>
+
+An IRC client written in pure bash
+
+<img src="https://i.imgur.com/AbeKUg4.jpg" width="400px">
+
+## Usage
+
+```sh
+usage: [birch -s host -u nick [-p pass -c channel]]
+        -s server      Server to connect to (required).
+        -u nick        Username to use (required).
+        -p password    Password to use.
+        -c channel     Channel to join.
+```
+
+## Installation
+
+- Add `birch` to your path.
+
+**Full Installation.**
+
+1. Download `birch`.
+    - Release: https://github.com/dylanaraps/birch/releases/latest
+    - Git: `git clone https://github.com/dylanaraps/birch`
+2. Change working directory to `birch`.
+    - `cd birch`
+3. Run `make install` inside the script directory to install the script.
+    - **NOTE**: You may have to run this as root.
+
+**NOTE:** `birch` can be uninstalled easily using `make uninstall`. This removes all of files from your system.
+
