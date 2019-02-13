@@ -39,19 +39,16 @@ setup_irc() {
 }
 
 print_msg() {
-    case "$1" in
-        msg)
-            [[ $1 != "$nick" ]] &&
-                local nick_color="\\e[38;5;${#2}m"
+    [[ $1 != "$nick" ]] &&
+        local nick_color="\\e[38;5;${#2}m"
 
-            printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$2" "$3"
-        ;;
-
-        *) printf -v msgs '\r%s\n' "$1" ;;
-    esac
-
+    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$2" "$3"
     printf '%s' "$msgs"
-    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=$msgs"
+    hist_add "$msgs"
+}
+
+hist_add() {
+    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=$1"
 }
 
 irc_receive() {
@@ -77,7 +74,10 @@ irc_receive() {
                     print_msg msg "$user" "$mesg"
             ;;
 
-            *) print_msg "${REPLY/*:}" ;;
+            *)
+                printf '%s\n' "${REPLY/*:}"
+                hist_add "${REPLY/*:}"
+            ;;
         esac
 }
 
