@@ -13,7 +13,8 @@ reset_terminal() {
 }
 
 get_term_size() {
-    read -r LINES COLUMNS < <(stty size)
+    shopt -s checkwinsize; (:;:)
+    export LINES COLUMNS
 }
 
 redraw() {
@@ -79,7 +80,7 @@ irc_receive() {
 irc_send() {
     printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
 
-    read -rst 0.01 -n 1 &&
+    IFS= read -rst 0.01 -n 1 &&
         case "$REPLY" in
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -109,7 +110,20 @@ irc_send() {
                 msg=
             ;;
 
+            $'\e'*) esc=1 ;;
+
             [[:print:]])
+                # Handle escape sequences.
+                ((esc == 1)) && {
+                    [[ $REPLY == \[ ]] &&
+                        return
+
+                    [[ $REPLY != \[ ]] && {
+                        esc=
+                        return
+                    }
+                }
+
                 msg+="$REPLY"
             ;;
         esac
