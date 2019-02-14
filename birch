@@ -165,6 +165,7 @@ main() {
     get_args "$@"
 
     trap 'reset_terminal; exec 69>&-' EXIT
+    trap 'exit' INT TERM
     trap 'resize=1' WINCH
 
     get_term_size
