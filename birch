@@ -41,7 +41,7 @@ print_msg() {
 }
 
 irc_receive() {
-    read -srt "${1:-0.001}" -u 69 &&
+    read -srt 0.001 -u 69 &&
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
