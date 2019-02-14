@@ -13,7 +13,7 @@ reset_terminal() {
 }
 
 get_term_size() {
-    shopt -s checkwinsize; (:;:)
+    read -r LINES COLUMNS < <(stty size)
 }
 
 redraw() {
