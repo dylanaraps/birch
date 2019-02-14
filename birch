@@ -14,7 +14,6 @@ reset_terminal() {
 
 get_term_size() {
     shopt -s checkwinsize; (:;:)
-    export LINES COLUMNS
 }
 
 redraw() {
@@ -166,7 +165,7 @@ main() {
     get_args "$@"
 
     trap 'reset_terminal; exec 69>&-' EXIT
-    trap 'get_term_size; redraw' WINCH
+    trap 'resize=1' WINCH
 
     get_term_size
     setup_terminal
@@ -175,6 +174,12 @@ main() {
     for ((;;)); {
         irc_send
         irc_receive
+
+        ((resize == 1)) && {
+            get_term_size
+            redraw
+            resize=0
+        }
     }
 }
 
