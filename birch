@@ -80,26 +80,7 @@ irc_send() {
             ;;
 
             "")
-                case "$msg" in
-                    '/join'*)
-                        printf 'PART %s\n' "$chan" >&69
-                        printf 'JOIN %s\n' "${msg/\/join }" >&69
-                        chan="$_"
-                    ;;
-
-                    '/nick'*)
-                        printf 'NICK %s\n' "${msg/\/nick }" >&69
-                        nick="$_"
-                    ;;
-
-                    "") ;;
-
-                    *)
-                        printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
-                        print_msg "$nick" "$msg"
-                    ;;
-                esac
-
+                irc_cmd "$msg"
                 msg=
             ;;
 
@@ -118,6 +99,28 @@ irc_send() {
                 msg+="$REPLY"
             ;;
         esac
+}
+
+irc_cmd() {
+    case "$1" in
+        '/join'*)
+            printf 'PART %s\n' "$chan" >&69
+            printf 'JOIN %s\n' "${1/\/join }" >&69
+            chan="$_"
+        ;;
+
+        '/nick'*)
+            printf 'NICK %s\n' "${1/\/nick }" >&69
+            nick="$_"
+        ;;
+
+        "") ;;
+
+        *)
+            printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
+            print_msg "$nick" "$1"
+        ;;
+    esac
 }
 
 get_args() {
