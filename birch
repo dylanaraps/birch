@@ -18,9 +18,7 @@ get_term_size() {
 
 redraw() {
     printf '\e[2J\e[1;%sr' "$((LINES-1))"
-    hist_arr="hist_${chan//[^a-zA-Z0-9=\\;]/_}"
-    IFS=$'\n' read -d "" -ra hist <<< "${!hist_arr}"
-    printf '%s\n' "${hist[@]: -$((LINES-1))}"
+    printf '%s' "${hist[@]: -$((LINES-1))}"
 }
 
 setup_irc() {
@@ -35,15 +33,11 @@ setup_irc() {
 
 print_msg() {
     [[ $1 != "$nick" ]] &&
-        local nick_color="\\e[38;5;${#2}m"
+        local nick_color="\\e[38;5;${#1}m"
 
-    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$2" "$3"
+    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
     printf '%s' "$msgs"
-    hist_add "$msgs"
-}
-
-hist_add() {
-    declare -g "hist_${chan//[^a-zA-Z0-9=\\;]/_}+=$1"
+    hist+=("$msgs")
 }
 
 irc_receive() {
@@ -58,21 +52,19 @@ irc_receive() {
             ;;
 
             :*"PRIVMSG $chan"*)
-                IFS=' :' read -r _ _ _ _ mesg <<< "$REPLY"
-                user="${REPLY/!*}"
-                user="${user:1}"
+                IFS=' :!' read -r _ user _ _ _ mesg <<< "$REPLY"
 
                 # Bold.
                 mesg="${mesg/$'\00302\002'/$'\e[1m'}"
                 mesg="${mesg/$'\003\002'/$'\e[m'}"
 
-                [[ -n $mesg ]] &&
-                    print_msg msg "$user" "$mesg"
+                print_msg "$user" "$mesg"
             ;;
+
+            :*PRIVMSG*) ;;
 
             *)
                 printf '%s\n' "${REPLY/*:}"
-                hist_add "${REPLY/*:}"
             ;;
         esac
 }
@@ -89,9 +81,9 @@ irc_send() {
             "")
                 case "$msg" in
                     '/join'*)
+                        printf 'PART %s\n' "$chan" >&69
                         printf 'JOIN %s\n' "${msg/\/join }" >&69
                         chan="$_"
-                        redraw
                     ;;
 
                     '/nick'*)
@@ -103,7 +95,7 @@ irc_send() {
 
                     *)
                         printf 'PRIVMSG %s %s\n' "$chan" ":$msg" >&69
-                        print_msg msg "$nick" "$msg"
+                        print_msg "$nick" "$msg"
                     ;;
                 esac
 
