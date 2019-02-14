@@ -58,8 +58,9 @@ irc_receive() {
             ;;
 
             :*"PRIVMSG $chan"*)
-                IFS='!:' read -r _ user _ <<< "$REPLY"
                 IFS=' :' read -r _ _ _ _ mesg <<< "$REPLY"
+                user="${REPLY/!*}"
+                user="${user:1}"
 
                 # Bold.
                 mesg="${mesg/$'\00302\002'/$'\e[1m'}"
