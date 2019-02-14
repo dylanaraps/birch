@@ -65,6 +65,7 @@ irc_receive() {
 
             *)
                 printf '%s\n' "${REPLY/*:}"
+                hist+=("${REPLY/*:}"$'\n')
             ;;
         esac
 }
