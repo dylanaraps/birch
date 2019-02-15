@@ -75,19 +75,25 @@ irc_send() {
 
     IFS= read -rst 0.01 -n 1 &&
         case "$REPLY" in
+            # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
             ;;
 
+            # Enter.
             "")
                 irc_cmd "$msg"
                 msg=
             ;;
 
+            # If the input character is an escape, it's most likely
+            # an escape sequence. The next 1-2 characters are most
+            # likely '[' and '[A-Z]' and we need to ignore them.
             $'\e'*) esc=1 ;;
 
+            # All other keys.
             [[:print:]])
-                # Handle escape sequences.
+                # Handle escape sequences (ignore them).
                 ((esc == 1)) && {
                     [[ $REPLY == \[ ]] &&
                         return
@@ -104,6 +110,9 @@ irc_send() {
 irc_cmd() {
     case "$1" in
         '/join'*)
+            # Instead of logging the messages for unfocused channels,
+            # leave a channel before joining another one. This 'hack'
+            # causes the IRC server to send us the latest messages.
             printf 'PART %s\n' "$chan" >&69
             printf 'JOIN %s\n' "${1/\/join }" >&69
             chan="$_"
@@ -161,7 +170,12 @@ usage() {
 main() {
     get_args "$@"
 
+    # Leave the terminal in a useable state and close the connection on exit.
     trap 'reset_terminal; exec 69>&-' EXIT
+
+    # SIGWINCH is asynchronous and causes issues during read loops.
+    # Instead of doing anything we set a variable and handling the
+    # resize synchronously after the server and input read time-out.
     trap 'resize=1' WINCH
 
     get_term_size
@@ -172,6 +186,7 @@ main() {
         irc_send
         irc_receive
 
+        # Make 'SIGWINCH' synchronous (see above trap).
         ((resize == 1)) && {
             get_term_size
             redraw
