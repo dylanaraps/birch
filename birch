@@ -119,7 +119,7 @@ irc_send() {
             # All other keys.
             [[:print:]])
                 # Handle escape sequences (ignore them).
-                ((esc == 1)) && {
+                [[ $esc == 1 ]] && {
                     [[ $REPLY == \[ ]] &&
                         return
 
@@ -217,7 +217,7 @@ get_args() {
 
 usage() {
     printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
-        "usage: [birch -s host -u nick [-p pass -c channel]]" \
+        "usage: [birch -s host [-u nick -p pass -c channel]]" \
         "-s server      Server to connect to (required)." \
         "-u nick        Username to use (required)." \
         "-p password    Password to use." \
@@ -244,7 +244,7 @@ main() {
         irc_receive
 
         # Make 'SIGWINCH' synchronous (see above trap).
-        ((resize == 1)) && {
+        [[ $resize == 1 ]] && {
             get_term_size
             redraw
             resize=0
