@@ -156,8 +156,6 @@ irc_receive() {
                 print_msg "$user" "$mesg"
             ;;
 
-            :*PRIVMSG*) ;;
-
             *)
                 printf '%s\n' "${REPLY/*:}"
                 hist+=("${REPLY/*:}"$'\n')
