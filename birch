@@ -181,9 +181,7 @@ irc_cmd() {
             nick="$_"
         ;;
 
-        "") ;;
-
-        *)
+        [[:print:]]*)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
             print_msg "$nick" "$1"
         ;;
