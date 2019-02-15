@@ -231,7 +231,7 @@ main() {
     # resize synchronously after the server and input read time-out.
     trap 'resize=1' WINCH
 
-    for ((;;)); {
+    for ((;;)) {
         irc_send
         irc_receive
 
