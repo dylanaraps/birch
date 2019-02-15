@@ -25,6 +25,7 @@ usage: [birch -s host -u nick [-p pass -c channel]]
 
 - [ ] Add more IRC commands.
 - [ ] Add TAB completion for channels.
+- [ ] Handle a dropped connection.
 - [ ] Add formatting
     - [x] `bold`
     - [ ] `italics`
