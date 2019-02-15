@@ -151,6 +151,7 @@ irc_send() {
                 }
 
                 msg+="$REPLY"
+                unset comp c
             ;;
         esac
 }
