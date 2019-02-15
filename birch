@@ -13,10 +13,15 @@ reset_terminal() {
 }
 
 get_term_size() {
+    # In bash 4+, enabling 'checkwinsize' inside of a
+    # script also sets the LINES and COLUMNS variables.
+    # 'checkwinsize' updates the variables after a command,
+    # so we run a command that does nothing.
     shopt -s checkwinsize; (:;:)
 }
 
 redraw() {
+    # Clear the screen and print the last N lines of history.
     printf '\e[2J\e[1;%sr' "$((LINES-1))"
     printf '%s' "${hist[@]: -$((LINES-1))}"
 }
@@ -32,6 +37,9 @@ setup_irc() {
 }
 
 print_msg() {
+    # Nick color is based on nickname length. This is a cheap
+    # way of coloring nicks differently without needing to keep
+    # track of user+color.
     [[ $1 != "$nick" ]] &&
         local nick_color="\\e[38;5;${#1}m"
 
