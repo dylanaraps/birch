@@ -219,7 +219,7 @@ usage() {
     printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
         "usage: [birch -s host [-u nick -p pass -c channel]]" \
         "-s server      Server to connect to (required)." \
-        "-u nick        Username to use (required)." \
+        "-u nick        Username to use." \
         "-p password    Password to use." \
         "-c channel     Channel to join."
     exit 1

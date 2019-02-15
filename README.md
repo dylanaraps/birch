@@ -9,9 +9,9 @@ A [WIP] IRC client written in pure bash.
 ## Usage
 
 ```sh
-usage: [birch -s host -u nick [-p pass -c channel]]
+usage: [birch -s host [-u nick -p pass -c channel]]
         -s server      Server to connect to (required).
-        -u nick        Username to use (required).
+        -u nick        Username to use.
         -p password    Password to use.
         -c channel     Channel to join.
 ```
