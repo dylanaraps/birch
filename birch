@@ -41,7 +41,6 @@ get_term_size() {
 }
 
 setup_irc() {
-    exec 69>&-
     exec 69<>"/dev/tcp/${host}/6667" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
         exit 1
