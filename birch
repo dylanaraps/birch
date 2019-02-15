@@ -4,11 +4,19 @@
 
 setup_terminal() {
     printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+
+    # Disable echoing of pressed keys. This isn't pure bash
+    # but its essential when writing any kind of TUI. This
+    # can't be avoided nor can it be done in pure bash.
     stty -echo
 }
 
 reset_terminal() {
     printf '\e[2J\e[;r\e[?25h\e[?1049l'
+
+    # Enable echoing of pressed keys. This isn't pure bash
+    # but its essential when writing any kind of TUI. This
+    # can't be avoided nor can it be done in pure bash.
     stty echo
 }
 
