@@ -71,39 +71,25 @@ print_msg() {
     hist+=("$msgs")
 }
 
-irc_receive() {
-    read -srt 0.001 -u 69 &&
-        case "$REPLY" in
-            PING*)
-                printf 'PONG %s\n' "${REPLY/PING }" >&69
-            ;;
-
-            ":"*"$host NICK"*)
-                IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
-            ;;
-
-            :*"PRIVMSG $chan"*)
-                IFS=' :!' read -r _ user _ _ _ mesg <<< "$REPLY"
-
-                # Bold.
-                mesg="${mesg/$'\00302\002'/$'\e[1m'}"
-                mesg="${mesg/$'\003\002'/$'\e[m'}"
-
-                print_msg "$user" "$mesg"
-            ;;
-
-            :*PRIVMSG*) ;;
-
-            *)
-                printf '%s\n' "${REPLY/*:}"
-                hist+=("${REPLY/*:}"$'\n')
-            ;;
-        esac
-}
-
 irc_send() {
+    # This function runs every 0.01 seconds and checks for a key-press.
+    # On a key-press or when this times out it checks for a response
+    # from the server. As this function and irc_receive() run within 0.01ms
+    # the process is unnoticable to the user.
+    #
+    # This printf displays the prompt on the bottom of the window. The escape
+    # sequences are setup so that this function can run at any time without
+    # interrupting the current cursor position.
     printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
 
+    # The prompt works by "faking" user input. The cursor is a space character
+    # with its background set to white. Each pressed key appends to a string
+    # which is printed on each loop. The backspace key just removes the last
+    # character in the saved string.
+    #
+    # The user input string is only cleared on an enter key-press. This allows
+    # this function to be looped infinitely and even interrupted by other
+    # parts of the program without affecting the typed message.
     IFS= read -rst 0.01 -n 1 &&
         case "$REPLY" in
             # Backspace.
@@ -134,6 +120,39 @@ irc_send() {
                 }
 
                 msg+="$REPLY"
+            ;;
+        esac
+}
+
+irc_receive() {
+    # Check received data from the server every 0.1ms or when a key is
+    # pressed. The 0.001ms timeout ensures that checking for data doesn't
+    # block user input.
+    read -srt 0.001 -u 69 &&
+        case "$REPLY" in
+            PING*)
+                printf 'PONG %s\n' "${REPLY/PING }" >&69
+            ;;
+
+            ":"*"$host NICK"*)
+                IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
+            ;;
+
+            :*"PRIVMSG $chan"*)
+                IFS=' :!' read -r _ user _ _ _ mesg <<< "$REPLY"
+
+                # Bold.
+                mesg="${mesg/$'\00302\002'/$'\e[1m'}"
+                mesg="${mesg/$'\003\002'/$'\e[m'}"
+
+                print_msg "$user" "$mesg"
+            ;;
+
+            :*PRIVMSG*) ;;
+
+            *)
+                printf '%s\n' "${REPLY/*:}"
+                hist+=("${REPLY/*:}"$'\n')
             ;;
         esac
 }
