@@ -50,6 +50,7 @@ setup_irc() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
+    printf 'LIST\nNAMES\n' >&69
 }
 
 redraw() {
@@ -104,6 +105,15 @@ irc_send() {
                 msg="${msg%?}"
             ;;
 
+            # Tab.
+            $'\t')
+                [[ ${channels[*]} =~ "${msg/*\#}"[[:alnum:]]* ]] &&
+                    msg="${msg/\#*/\#${BASH_REMATCH[0]}}"
+
+                [[ ${users[*]} =~ "${msg/*\@/}"[[:alnum:]]* ]] &&
+                    msg="${msg/\@*/@${BASH_REMATCH[0]}}"
+            ;;
+
             # Enter.
             "")
                 irc_cmd "$msg"
@@ -153,6 +163,16 @@ irc_receive() {
                 mesg="${mesg/$'\003\002'/$'\e[m'}"
 
                 print_msg "$user" "$mesg"
+            ;;
+
+            ":"*"$host 322"*)
+                read -r _ _ _ channel _ <<< "$REPLY"
+                channels+=("$channel")
+            ;;
+
+            ":"*"$host 353"*)
+                read -ra user <<< "${REPLY##*=}"
+                users+=("${user[@]}")
             ;;
 
             *)
