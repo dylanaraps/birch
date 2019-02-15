@@ -182,7 +182,7 @@ main() {
     trap 'reset_terminal; exec 69>&-' EXIT
 
     # SIGWINCH is asynchronous and causes issues during read loops.
-    # Instead of doing anything we set a variable and handling the
+    # Instead of doing anything we set a variable and handle the
     # resize synchronously after the server and input read time-out.
     trap 'resize=1' WINCH
 
