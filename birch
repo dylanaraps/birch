@@ -103,21 +103,35 @@ irc_send() {
             # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
+                unset comp c
             ;;
 
             # Tab.
             $'\t')
-                [[ ${channels[*]} =~ "${msg/*\#}"[[:alnum:]]* ]] &&
-                    msg="${msg/\#*/\#${BASH_REMATCH[0]}}"
+                # Completion mode is the first char in the last word.
+                comp_type="${msg##* }"
+                comp_type="${comp_type:0:1}"
 
-                [[ ${users[*]} =~ "${msg/*\@/}"[[:alnum:]]* ]] &&
-                    msg="${msg/\@*/@${BASH_REMATCH[0]}}"
+                # Set completion list based on completion type.
+                [[ $comp_type == '#' ]] && comp_list="${channels[*]//\#}"
+                [[ $comp_type == '@' ]] && comp_list="${users[*]}"
+
+                # Generate a completion list once.
+                [[ -z ${comp[0]} ]] &&
+                    IFS=$'\n' read -d "" -ra comp \
+                        < <(compgen -W "$comp_list" "${msg/*"$comp_type"}")
+
+                # On each tab press, cycle through the completion list.
+                [[ -n ${comp[c]} ]] && {
+                    msg="${msg/"$comp_type"*/"${comp_type}${comp[c]}"}"
+                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
+                }
             ;;
 
             # Enter.
             "")
                 irc_cmd "$msg"
-                msg=
+                unset comp c msg
             ;;
 
             # If the input character is an escape, it's most likely
