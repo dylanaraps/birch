@@ -80,6 +80,14 @@ irc_send() {
     # This printf displays the prompt on the bottom of the window. The escape
     # sequences are setup so that this function can run at any time without
     # interrupting the current cursor position.
+    #
+    # '\e7':    Save cursor position.
+    # '\e[%sH': Move cursor to last line.
+    # '\r':     Move cursor to first column.
+    # '\e[K':   Clear the current line.
+    # '\e[47m': Change the background to white.
+    # '\e[m':   Clear formatting.
+    # '\e8':    Restore cursor position.
     printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
 
     # The prompt works by "faking" user input. The cursor is a space character
