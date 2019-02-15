@@ -206,8 +206,7 @@ get_args() {
         esac
     done
 
-    [[ -z $host ]] &&
-        usage
+    [[ -z $host ]] && usage
 }
 
 usage() {
