@@ -222,6 +222,10 @@ irc_cmd() {
             nick="$_"
         ;;
 
+        '/msg'*)
+            printf 'PRIVMSG %s\n' "${1/\/msg }" >&69
+        ;;
+
         [[:print:]]*)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
             print_msg "$nick" "$1"
