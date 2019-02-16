@@ -114,8 +114,11 @@ irc_send() {
                 comp_type="${comp_type:0:1}"
 
                 # Set completion list based on completion type.
-                [[ $comp_type == '#' ]] && comp_list="${channels[*]//\#}"
-                [[ $comp_type == '@' ]] && comp_list="${users[*]}"
+                case "$comp_type" in
+                    '#') comp_list="${channels[*]//\#}" ;;
+                    '@') comp_list="${users[*]}" ;;
+                    *)   return ;;
+                esac
 
                 # Generate a completion list once.
                 [[ -z ${comp[0]} ]] &&
@@ -167,8 +170,8 @@ irc_receive() {
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            *"353"*)
-                read -ra user <<< "${REPLY##*:}"
+            :*"$host 353"*)
+                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
                 users+=("${user[@]}")
             ;;
 
