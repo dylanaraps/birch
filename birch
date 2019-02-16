@@ -184,13 +184,8 @@ irc_receive() {
             :*"PRIVMSG $chan"*)
                 IFS=' :!' read -r _ user _ _ _ mesg <<< "$REPLY"
 
-                # Mentions.
-                # TODO: Do this properly.
-                mesg="${mesg//$'\00308'/$'\e[38m'}"
-                mesg="${mesg//$'\00302\002'/$'\e[32;1m'}"
-                mesg="${mesg//$'\003\002'/$'\e[m'}"
-                mesg="${mesg//$'\003'/$'\e[m'}"
-                mesg="${mesg//$'\021'/\'}"
+                # TODO: Parse formatting properly.
+                mesg="${mesg//[[^:print:]]}"
 
                 print_msg "$user" "$mesg"
             ;;
