@@ -122,7 +122,7 @@ irc_send() {
 
                 # Generate a completion list once.
                 [[ -z ${comp[0]} ]] &&
-                    mapfile -t comp \
+                    IFS=$'\n' read -d "" -ra comp \
                         < <(compgen -W "$comp_list" "${msg/*"$comp_type"}")
 
                 # On each tab press, cycle through the completion list.
