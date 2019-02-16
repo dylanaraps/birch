@@ -161,7 +161,7 @@ irc_receive() {
     # Check received data from the server every 0.1ms or when a key is
     # pressed. The 0.001ms timeout ensures that checking for data doesn't
     # block user input.
-    read -srt 0.003 -u 69 &&
+    read -srt 0.002 -u 69 &&
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
