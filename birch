@@ -170,11 +170,6 @@ irc_receive() {
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            :*"$host 353"*)
-                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
-                users+=("${user[@]}")
-            ;;
-
             :*"$host NICK"*)
                 IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
             ;;
@@ -189,9 +184,15 @@ irc_receive() {
                 print_msg "$user" "$mesg"
             ;;
 
+            :*353*)
+                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
+                users+=("${user[@]//[^a-zA-Z0-9=\\;]}")
+            ;;
+
             *)
                 printf '%s\n' "${REPLY/*:}"
                 hist+=("${REPLY/*:}"$'\n')
+                printf '%s\n' "$REPLY" >> ~/.birch
             ;;
         esac
 }
