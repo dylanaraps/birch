@@ -135,7 +135,7 @@ irc_send() {
             # Enter.
             "")
                 irc_cmd "$msg"
-                msg_hist=("$msg" "${msg_hist[@]}")
+                msg_hist+=("$msg")
                 unset comp c msg h
             ;;
 
@@ -151,19 +151,18 @@ irc_send() {
                     [[ $REPLY == \[ ]] &&
                         return
 
-                    [[ $REPLY == A ]] &&
-                        msg="${msg_hist[h<${#msg_hist[@]}?h++:h]}"
+                    [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
+                        msg="${msg_hist[-++h]}"
 
-                    [[ $REPLY == B ]] &&
-                        msg="${msg_hist[h>0?h--:h]}"
+                    [[ $REPLY == B && ${h:=0} != 0 ]] &&
+                        msg="${msg_hist[---h]}"
 
                     esc=
                     return
                 }
 
-                h=
                 msg+="$REPLY"
-                unset comp c
+                unset comp c h
             ;;
         esac
 }
