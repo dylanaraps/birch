@@ -50,7 +50,8 @@ setup_irc() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
-    printf 'LIST\nNAMES\n' >&69
+
+    channels=("$chan")
 }
 
 redraw() {
@@ -180,11 +181,6 @@ irc_receive() {
                 print_msg "$user" "$mesg"
             ;;
 
-            ":"*"$host 322"*)
-                read -r _ _ _ channel _ <<< "$REPLY"
-                channels+=("$channel")
-            ;;
-
             ":"*"$host 353"*)
                 read -ra user <<< "${REPLY##*=}"
                 users+=("${user[@]}")
@@ -206,6 +202,7 @@ irc_cmd() {
             printf 'PART %s\n' "$chan" >&69
             printf 'JOIN %s\n' "${1/\/join }" >&69
             chan="$_"
+            channels+=("$chan")
         ;;
 
         '/nick'*)
