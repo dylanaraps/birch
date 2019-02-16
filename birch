@@ -65,7 +65,7 @@ print_msg() {
     # way of coloring nicks differently without needing to keep
     # track of user+color.
     [[ $1 != "$nick" ]] &&
-        local nick_color="\\e[38;5;${#1}m"
+        local nick_color="\\e[38;5;$((${#1}/2))m"
 
     printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
     printf '%s' "$msgs"
@@ -127,7 +127,7 @@ irc_send() {
 
                 # On each tab press, cycle through the completion list.
                 [[ -n ${comp[c]} ]] && {
-                    msg="${msg/${comp_type}*/${comp_type}${comp[c]}}"
+                    msg="${msg/"${comp_type}"*/${comp_type}${comp[c]}}"
                     ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
                 }
             ;;
@@ -152,10 +152,10 @@ irc_send() {
                         return
 
                     [[ $REPLY == A ]] &&
-                        msg="${msg_hist[h==${#msg_hist[@]}?h:h++]}"
+                        msg="${msg_hist[h<${#msg_hist[@]}?h++:h]}"
 
                     [[ $REPLY == B ]] &&
-                        msg="${msg_hist[h==0?h:h--]}"
+                        msg="${msg_hist[h>0?h--:h]}"
 
                     esc=
                     return
