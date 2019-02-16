@@ -188,7 +188,6 @@ irc_receive() {
 
             *)
                 printf '%s\n' "${REPLY/*:}"
-                printf '%s\n' "$REPLY" >> ~/.birch4
                 hist+=("${REPLY/*:}"$'\n')
             ;;
         esac
@@ -202,8 +201,10 @@ irc_cmd() {
             # causes the IRC server to send us the latest messages.
             printf 'PART %s\n' "$chan" >&69
             printf 'JOIN %s\n' "${1/\/join }" >&69
+
             chan="$_"
             channels+=("$chan")
+            users=()
         ;;
 
         '/nick'*)
