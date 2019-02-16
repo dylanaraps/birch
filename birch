@@ -99,8 +99,8 @@ irc_send() {
     # The user input string is only cleared on an enter key-press. This allows
     # this function to be looped infinitely and even interrupted by other
     # parts of the program without affecting the typed message.
-    IFS= read -rst 0.01 -n 1 key &&
-        case "$key" in
+    IFS= read -rst 0.01 -n 1 &&
+        case "$REPLY" in
             # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -147,14 +147,14 @@ irc_send() {
             [[:print:]])
                 # Handle escape sequences (ignore them).
                 [[ $esc == 1 ]] && {
-                    [[ $key == \[ ]] &&
+                    [[ $REPLY == \[ ]] &&
                         return
 
                     esc=
                     return
                 }
 
-                msg+="$key"
+                msg+="$REPLY"
                 unset comp c
             ;;
         esac
