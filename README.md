@@ -20,11 +20,12 @@ usage: [birch -s host [-u nick -p pass -c channel]]
 
 - `/join #channel`
 - `/nick nick`
+- `/msg [user,channel] etc etc etc`
 
 ## TODO
 
 - [ ] Add more IRC commands.
-- [ ] Add TAB completion for channels.
+- [x] Add TAB completion for channels.
 - [ ] Handle a dropped connection.
 - [ ] Add formatting
     - [x] `bold`
