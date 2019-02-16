@@ -102,18 +102,21 @@ irc_send() {
             # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
+                h=
             ;;
 
             # Enter.
             "")
                 irc_cmd "$msg"
+                msg_hist=("$msg" "${msg_hist[@]}")
                 msg=
+                h=
             ;;
 
             # If the input character is an escape, it's most likely
             # an escape sequence. The next 1-2 characters are most
             # likely '[' and '[A-Z]' and we need to ignore them.
-            $'\e'*) esc=1 ;;
+            $'\e') esc=1 ;;
 
             # All other keys.
             [[:print:]])
@@ -122,10 +125,17 @@ irc_send() {
                     [[ $REPLY == \[ ]] &&
                         return
 
+                    [[ $REPLY == A ]] &&
+                        msg="${msg_hist[h==${#msg_hist[@]}?h:h++]}"
+
+                    [[ $REPLY == B ]] &&
+                        msg="${msg_hist[h==0?h:h--]}"
+
                     esc=
                     return
                 }
 
+                h=
                 msg+="$REPLY"
             ;;
         esac
