@@ -89,7 +89,7 @@ irc_send() {
     # '\e[47m': Change the background to white.
     # '\e[m':   Clear formatting.
     # '\e8':    Restore cursor position.
-    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan ${#users[@]} > $msg"
 
     # The prompt works by "faking" user input. The cursor is a space character
     # with its background set to white. Each pressed key appends to a string
@@ -99,8 +99,8 @@ irc_send() {
     # The user input string is only cleared on an enter key-press. This allows
     # this function to be looped infinitely and even interrupted by other
     # parts of the program without affecting the typed message.
-    IFS= read -rst 0.01 -n 1 &&
-        case "$REPLY" in
+    IFS= read -rst 0.01 -n 1 key &&
+        case "$key" in
             # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
@@ -144,14 +144,14 @@ irc_send() {
             [[:print:]])
                 # Handle escape sequences (ignore them).
                 [[ $esc == 1 ]] && {
-                    [[ $REPLY == \[ ]] &&
+                    [[ $key == \[ ]] &&
                         return
 
                     esc=
                     return
                 }
 
-                msg+="$REPLY"
+                msg+="$key"
                 unset comp c
             ;;
         esac
@@ -161,13 +161,18 @@ irc_receive() {
     # Check received data from the server every 0.1ms or when a key is
     # pressed. The 0.001ms timeout ensures that checking for data doesn't
     # block user input.
-    read -srt 0.001 -u 69 &&
+    read -srt 0.003 -u 69 &&
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            ":"*"$host NICK"*)
+            *"353"*)
+                read -ra user <<< "${REPLY##*:}"
+                users+=("${user[@]}")
+            ;;
+
+            :*"$host NICK"*)
                 IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
             ;;
 
@@ -181,13 +186,9 @@ irc_receive() {
                 print_msg "$user" "$mesg"
             ;;
 
-            ":"*"$host 353"*)
-                read -ra user <<< "${REPLY##*=}"
-                users+=("${user[@]}")
-            ;;
-
             *)
                 printf '%s\n' "${REPLY/*:}"
+                printf '%s\n' "$REPLY" >> ~/.birch4
                 hist+=("${REPLY/*:}"$'\n')
             ;;
         esac
