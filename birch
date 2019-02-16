@@ -89,7 +89,7 @@ irc_send() {
     # '\e[47m': Change the background to white.
     # '\e[m':   Clear formatting.
     # '\e8':    Restore cursor position.
-    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan ${#users[@]} > $msg"
+    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
 
     # The prompt works by "faking" user input. The cursor is a space character
     # with its background set to white. Each pressed key appends to a string
