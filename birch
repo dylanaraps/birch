@@ -50,6 +50,8 @@ setup_irc() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
+
+    channels=("$chan")
 }
 
 redraw() {
@@ -102,15 +104,39 @@ irc_send() {
             # Backspace.
             $'\177'|$'\b')
                 msg="${msg%?}"
-                h=
+                unset comp c h
+            ;;
+
+            # Tab.
+            $'\t')
+                # Completion mode is the first char in the last word.
+                comp_type="${msg##* }"
+                comp_type="${comp_type:0:1}"
+
+                # Set completion list based on completion type.
+                case "$comp_type" in
+                    '#') comp_list="${channels[*]//\#}" ;;
+                    '@') comp_list="${users[*]}" ;;
+                    *)   return ;;
+                esac
+
+                # Generate a completion list once.
+                [[ -z ${comp[0]} ]] &&
+                    IFS=$'\n' read -d "" -ra comp \
+                        < <(compgen -W "$comp_list" "${msg/*"$comp_type"}")
+
+                # On each tab press, cycle through the completion list.
+                [[ -n ${comp[c]} ]] && {
+                    msg="${msg/${comp_type}*/${comp_type}${comp[c]}}"
+                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
+                }
             ;;
 
             # Enter.
             "")
                 irc_cmd "$msg"
                 msg_hist=("$msg" "${msg_hist[@]}")
-                msg=
-                h=
+                unset comp c msg h
             ;;
 
             # If the input character is an escape, it's most likely
@@ -137,6 +163,7 @@ irc_send() {
 
                 h=
                 msg+="$REPLY"
+                unset comp c
             ;;
         esac
 }
@@ -145,13 +172,13 @@ irc_receive() {
     # Check received data from the server every 0.1ms or when a key is
     # pressed. The 0.001ms timeout ensures that checking for data doesn't
     # block user input.
-    read -srt 0.001 -u 69 &&
+    read -srt 0.002 -u 69 &&
         case "$REPLY" in
             PING*)
                 printf 'PONG %s\n' "${REPLY/PING }" >&69
             ;;
 
-            ":"*"$host NICK"*)
+            :*"$host NICK"*)
                 IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
             ;;
 
@@ -163,6 +190,11 @@ irc_receive() {
                 mesg="${mesg/$'\003\002'/$'\e[m'}"
 
                 print_msg "$user" "$mesg"
+            ;;
+
+            :*353*)
+                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
+                users+=("${user[@]//[^a-zA-Z0-9=\\;]}")
             ;;
 
             *)
@@ -180,7 +212,10 @@ irc_cmd() {
             # causes the IRC server to send us the latest messages.
             printf 'PART %s\n' "$chan" >&69
             printf 'JOIN %s\n' "${1/\/join }" >&69
+
             chan="$_"
+            channels+=("$chan")
+            users=()
         ;;
 
         '/nick'*)
