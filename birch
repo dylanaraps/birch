@@ -184,9 +184,13 @@ irc_receive() {
             :*"PRIVMSG $chan"*)
                 IFS=' :!' read -r _ user _ _ _ mesg <<< "$REPLY"
 
-                # Bold.
-                mesg="${mesg/$'\00302\002'/$'\e[1m'}"
-                mesg="${mesg/$'\003\002'/$'\e[m'}"
+                # Mentions.
+                # TODO: Do this properly.
+                mesg="${mesg//$'\00308'/$'\e[38m'}"
+                mesg="${mesg//$'\00302\002'/$'\e[32;1m'}"
+                mesg="${mesg//$'\003\002'/$'\e[m'}"
+                mesg="${mesg//$'\003'/$'\e[m'}"
+                mesg="${mesg//$'\021'/\'}"
 
                 print_msg "$user" "$mesg"
             ;;
@@ -205,25 +209,34 @@ irc_receive() {
 
 irc_cmd() {
     case "$1" in
-        '/join'*)
+        '/j'*)
             # Instead of logging the messages for unfocused channels,
             # leave a channel before joining another one. This 'hack'
             # causes the IRC server to send us the latest messages.
             printf 'PART %s\n' "$chan" >&69
-            printf 'JOIN %s\n' "${1/\/join }" >&69
+            printf 'JOIN %s\n' "${1/* }" >&69
 
             chan="$_"
             channels+=("$chan")
             users=()
         ;;
 
-        '/nick'*)
-            printf 'NICK %s\n' "${1/\/nick }" >&69
+        '/n'*)
+            printf 'NICK %s\n' "${1/* }" >&69
             nick="$_"
         ;;
 
-        '/msg'*)
-            printf 'PRIVMSG %s\n' "${1/\/msg }" >&69
+        '/m'*)
+            printf 'PRIVMSG %s\n' "${1/* }" >&69
+        ;;
+
+        '/q'*)
+            printf 'QUIT :%s\n' "${1/* }" >&69
+            exit
+        ;;
+
+        '/'*)
+            printf '%s\n' "error: ${1/ *} not implemented yet."
         ;;
 
         [[:print:]]*)
