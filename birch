@@ -127,7 +127,7 @@ irc_send() {
 
                 # On each tab press, cycle through the completion list.
                 [[ -n ${comp[c]} ]] && {
-                    msg="${msg/$comp_type*/${comp_type}${comp[c]}}"
+                    msg="${msg/${comp_type}*/${comp_type}${comp[c]}}"
                     ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
                 }
             ;;
