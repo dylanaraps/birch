@@ -151,9 +151,11 @@ irc_send() {
                     [[ $REPLY == \[ ]] &&
                         return
 
+                    # Command history Up.
                     [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
                         msg="${msg_hist[-++h]}"
 
+                    # Command history Down.
                     [[ $REPLY == B && ${h:=0} != 0 ]] &&
                         msg="${msg_hist[---h]}"
 
