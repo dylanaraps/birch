@@ -259,8 +259,7 @@ main() {
             term_size
             term_setup
 
-            # TODO: Pure bash.
-            tail "-$((LINES - 1))" < "/dev/shm/birch-$pid--current"
+            printf '%s\n' "$(< "/dev/shm/birch-$pid--current")"
         }
     }
 
