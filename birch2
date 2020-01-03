@@ -59,7 +59,7 @@ irc_setup() {
 irc_parse() {
     IFS=: read -r _ www mesg <<< "$1"
     read -ra args <<< "$www"
-    nick=${args[0]%%!*}
+    unick=${args[0]%%!*}
 }
 
 irc_printf() {
@@ -125,7 +125,7 @@ irc_output() {
                 irc_parse "$REPLY"
 
                 irc_printf '\e[1;3%sm%10s\e[m %s\n' \
-                    "$((${#nick}/2))" "${nick:0:10}" "$mesg"
+                    "$((${#unick}/2))" "${unick:0:10}" "$mesg"
             ;;
 
             *JOIN*|*QUIT*)
@@ -136,7 +136,7 @@ irc_output() {
                     *QUIT*): '<-- left'   ;;
                 esac
 
-                irc_printf '%10s %s\n' "${_# *}" "$nick has ${_%* } ${args[2]}"
+                irc_printf '%10s %s\n' "${_# *}" "$unick has ${_%* } ${args[2]}"
             ;;
 
             *NOTICE*)
