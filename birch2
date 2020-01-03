@@ -53,7 +53,7 @@ irc_setup() {
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
-    printf 'JOIN %s\n' "${chan:=#rice}" >&69
+    printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
 }
 
 irc_parse() {
@@ -82,7 +82,7 @@ irc_input() {
     esc cursor_fake
     esc cursor_load
 
-    IFS= read -rsn 1 -t 0.01 &&
+    IFS= read -rsn 1 -t 0.1 &&
         case $REPLY in
             $'\177'|$'\b')
                 msg=${msg%?}
@@ -103,6 +103,8 @@ irc_input() {
 
 irc_cmd() {
     case $1 in
+        "") ;;
+
         /j*)
 
         ;;
@@ -113,7 +115,8 @@ irc_cmd() {
         ;;
 
         /m*)
-            printf 'PRIVMSG %s\n' "${1/* }" >&69
+            read -r _ to msg <<< "$1"
+            printf 'PRIVMSG %s :%s\n' "$to" "$msg" >&69
         ;;
 
         /q*)
@@ -149,16 +152,17 @@ irc_output() {
                     "$((${#unick}/2))" "${unick:0:10}" "$mesg"
             ;;
 
-            *JOIN*|*QUIT*)
-                irc_parse "$REPLY"
+            *JOIN*|*PART*|*QUIT*)
+                REPLY=${REPLY:1}
 
                 case $REPLY in
                     *JOIN*): '-->joined' ;;
-                    *QUIT*): '<--left'   ;;
+                    *PART*): '<--left'   ;;
+                    *QUIT*): '<--quit'   ;;
                 esac
 
                 irc_printf '%10s %s\n' "${_::3}" \
-                    "$unick has ${_:3} ${args[2]}"
+                    "${REPLY%%\!*} has ${_:3} #${REPLY##*\#}"
             ;;
 
             *NOTICE*)
@@ -179,7 +183,38 @@ irc_output() {
     done
 }
 
+get_args() {
+    while getopts :s:u:p:c:v opt; do
+        case $opt in
+            s)  host=$OPTARG ;;
+            u)  nick=$OPTARG ;;
+            p)  pass=$OPTARG ;;
+            c)  chan=\#${OPTARG##\#} ;;
+
+            \?) usage ;;
+
+            v)
+                printf 'birch 0.0.1\n'
+                exit
+            ;;
+
+            :)
+                printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
+                exit 1
+            ;;
+        esac
+    done
+}
+
+usage() {
+    printf '%s\n' "usage: birch [-s host -u nick -p pass -c channel]"
+
+    exit 1
+}
+
+
 main() {
+    get_args "$@"
     term_size
     irc_setup
     term_setup
