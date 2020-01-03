@@ -51,6 +51,12 @@ irc_setup() {
     printf 'JOIN %s\n' "${chan:-#kisslinux}" >&69
 }
 
+irc_parse() {
+    IFS=: read -r _ www mesg <<< "$1"
+    read -ra args <<< "$www"
+    nick=${args[0]%%!*}
+}
+
 irc_output() {
     read -sru 69 &&
         case $REPLY in
@@ -58,9 +64,17 @@ irc_output() {
                 printf 'PONG%s\n' "${REPLY##PING}" >&69
             ;;
 
-            # :dylanaraps!~goldie@ppp-2-87-108-190.home.otenet.gr PRIVMSG #kisslinux :OK. Writing birch from scratch.
             *PRIVMSG*)
-                # printf '%s\n' "${nick##*!} $msg"
+                irc_parse "$REPLY"
+
+                printf '\e[1;3%sm%s\e[m %s\n' \
+                    "$((${#nick}/2))" "$nick" "$mesg"
+            ;;
+
+            *JOIN*)
+                irc_parse "$REPLY"
+
+                printf '%s\n' "$nick has joined ${args[2]}"
             ;;
 
             *NOTICE*)
