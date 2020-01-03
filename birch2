@@ -57,8 +57,11 @@ irc_setup() {
 }
 
 irc_parse() {
-    IFS=: read -r _ www mesg <<< "$1"
-    read -ra args <<< "$www"
+    mesg=${1##* :}
+    www=${1%% :*}
+
+    read -ra args <<< "${www##:}"
+
     unick=${args[0]%%!*}
 }
 
@@ -167,7 +170,7 @@ irc_output() {
                 irc_parse "$REPLY"
 
                 irc_printf '%10s %s\n' "--" \
-                    "$unick is now known as ${mesg##*:}"
+                    "$unick is now known as $mesg"
             ;;
 
             *)
