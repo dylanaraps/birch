@@ -20,12 +20,15 @@ esc() {
     printf %b "$_"
 }
 
+hist_focus() {
+    : >> "/dev/shm/birch-$pid-$chan"
+    ln -sf "/dev/shm/birch-$pid-$chan" "/dev/shm/birch-$pid--current"
+}
+
 clean() {
     term_reset
 
-    for buf in "/dev/shm/birch-$pid-"*; do
-        : > "$buf"
-    done
+    rm -f "/dev/shm/birch-$pid-"*
 
     kill 0
 }
@@ -64,6 +67,8 @@ irc_setup() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
     printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
+
+    hist_focus
 }
 
 irc_parse() {
@@ -79,7 +84,7 @@ irc_printf() {
     printf -v msg_input "$@"
 
     printf %s "$msg_input"
-    printf %s "$msg_input" >> "/dev/shm/birch-$pid-$chan"
+    printf %s "$msg_input" >> "/dev/shm/birch-$pid--current"
 }
 
 irc_input() {
@@ -119,7 +124,11 @@ irc_cmd() {
 
         /j*)
             printf 'JOIN %s\n' "${msg[1]}" >&69
+
             chan=$_
+            resize=1
+
+            hist_focus
         ;;
 
         /l*)
@@ -251,7 +260,7 @@ main() {
             term_setup
 
             # TODO: Pure bash.
-            tail "-$((LINES - 1))" < "/dev/shm/birch-$pid-$chan"
+            tail "-$((LINES - 1))" < "/dev/shm/birch-$pid--current"
         }
     }
 
