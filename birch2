@@ -20,16 +20,8 @@ esc() {
     printf %b "$_"
 }
 
-hist_focus() {
-    : >> "/dev/shm/birch-$pid-$chan"
-    ln -sf "/dev/shm/birch-$pid-$chan" "/dev/shm/birch-$pid--current"
-}
-
 clean() {
     term_reset
-
-    rm -f "/dev/shm/birch-$pid-"*
-
     kill 0
 }
 
@@ -67,8 +59,6 @@ irc_setup() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
     printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
-
-    hist_focus
 }
 
 irc_parse() {
@@ -84,9 +74,6 @@ irc_printf() {
     printf -v msg_input "$@"
 
     printf %s "$msg_input"
-    printf %s "$msg_input" >> "/dev/shm/birch-$pid-${to_chan:--current}"
-
-    to_chan=
 }
 
 irc_input() {
@@ -129,13 +116,10 @@ irc_cmd() {
 
             chan=$_
             resize=1
-
-            hist_focus
         ;;
 
         /l*)
             printf 'PART %s\n' "${msg[1]:-$chan}" >&69
-            chan=$_
         ;;
 
         /m*)
@@ -176,7 +160,7 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
-                to_chan=${args[2]}
+                chan=${args[2]}
 
                 irc_printf '\e[1;3%sm%10s\e[m %s\n' \
                     "$((${#unick}/2))" "${unick:0:10}" "$mesg"
@@ -244,8 +228,6 @@ usage() {
 
 
 main() {
-    pid=$$
-
     get_args "$@"
     term_size
     irc_setup
@@ -262,8 +244,6 @@ main() {
         [[ $resize ]] && {
             term_size
             term_setup
-
-            printf '%s\n' "$(< "/dev/shm/birch-$pid--current")"
         }
     }
 
