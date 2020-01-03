@@ -20,6 +20,16 @@ esc() {
     printf %b "$_"
 }
 
+clean() {
+    term_reset
+
+    for buf in "/dev/shm/birch-$pid-"*; do
+        : > "$buf"
+    done
+
+    kill 0
+}
+
 term_setup() {
     esc cursor_hide
     esc clear_screen
@@ -69,7 +79,7 @@ irc_printf() {
     printf -v msg_input "$@"
 
     printf %s "$msg_input"
-    printf %s "$msg_input" >> /dev/shm/irc
+    printf %s "$msg_input" >> "/dev/shm/birch-$pid-$chan"
 }
 
 irc_input() {
@@ -102,30 +112,37 @@ irc_input() {
 }
 
 irc_cmd() {
+    read -ra msg <<< "$1"
+
     case $1 in
         "") ;;
 
         /j*)
-
+            printf 'JOIN %s\n' "${msg[1]}" >&69
+            chan=$_
         ;;
 
-        /n*)
-            printf 'NICK %s\n' "${1/* }" >&69
-            nick=$_
+        /l*)
+            printf 'PART %s\n' "${msg[1]:-$chan}" >&69
+            chan=$_
         ;;
 
         /m*)
-            read -r _ to msg <<< "$1"
-            printf 'PRIVMSG %s :%s\n' "$to" "$msg" >&69
+            printf 'PRIVMSG %s :%s\n' "${msg[1]}" "${msg[2]}" >&69
+        ;;
+
+        /n*)
+            printf 'NICK %s\n' "${msg[1]}" >&69
+            nick=$_
         ;;
 
         /q*)
-            printf 'QUIT :%s\n' "${1/* }" >&69
+            printf 'QUIT :%s\n' "${msg[1]}" >&69
             exit
         ;;
 
         /*)
-            printf '%s\n' "error: ${1/ *} not implemented yet."
+            printf '%s\n' "error: ${msg[0]} not implemented yet."
         ;;
 
         *)
@@ -214,14 +231,15 @@ usage() {
 
 
 main() {
+    pid=$$
+
     get_args "$@"
     term_size
     irc_setup
     term_setup
 
-    # TODO: Move to function.
-    trap 'term_reset; >/dev/shm/irc; kill 0' INT EXIT
-    trap 'resize=1' WINCH
+    trap clean    INT EXIT
+    trap resize=1 WINCH
 
     irc_output &
 
@@ -233,7 +251,7 @@ main() {
             term_setup
 
             # TODO: Pure bash.
-            tail "-$((LINES - 1))" < /dev/shm/irc
+            tail "-$((LINES - 1))" < "/dev/shm/birch-$pid-$chan"
         }
     }
 
