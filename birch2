@@ -182,8 +182,9 @@ main() {
     irc_setup
     term_setup
 
+    # TODO: Move to function.
     trap 'term_reset; >/dev/shm/irc; kill 0' INT EXIT
-    trap 'resize=1'           WINCH
+    trap 'resize=1' WINCH
 
     irc_output &
 
