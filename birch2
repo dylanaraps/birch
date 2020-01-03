@@ -4,15 +4,20 @@
 
 esc() {
     case $1 in
-        cursor_show):  "?25h"   ;;
-        cursor_hide):  "?25l"   ;;
-        clear_screen): "2J"     ;;
-        scroll_area):  "$2;$3r" ;;
+        cursor_show):  "\\e[?25h"      ;;
+        cursor_hide):  "\\e[?25l"      ;;
+        cursor_save):  "\\e7"          ;;
+        cursor_load):  "\\e8"          ;;
+        cursor_move):  "\\e[$2;$3H"    ;;
+        cursor_fake):  "\\e[47m \\e[m" ;;
+        clear_screen): "\\e[2J"        ;;
+        clear_line):   "\\e[K"         ;;
+        scroll_area):  "\\e[$2;$3r"    ;;
 
         *) return
     esac
 
-    printf '\e[%b' "$_"
+    printf %b "$_"
 }
 
 term_setup() {
@@ -48,7 +53,7 @@ irc_setup() {
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
-    printf 'JOIN %s\n' "${chan:-#kisslinux}" >&69
+    printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
 }
 
 irc_parse() {
@@ -57,8 +62,52 @@ irc_parse() {
     nick=${args[0]%%!*}
 }
 
+irc_input() {
+    esc cursor_save
+    esc cursor_move "$LINES"
+    esc clear_line
+
+    printf %s "${args[2]} > $msg"
+
+    esc cursor_fake
+    esc cursor_load
+
+    IFS= read -rsn 1 -t 0.01 &&
+        case $REPLY in
+            $'\177'|$'\b')
+                msg=${msg%?}
+            ;;
+
+            "")
+                irc_cmd "$msg"
+                msg=
+            ;;
+
+            $'\e') ;;
+
+            *)
+                msg+=$REPLY
+            ;;
+        esac
+}
+
+irc_cmd() {
+    case $1 in
+        /*)
+            printf '%s\n' "error: ${1/ *} not implemented yet."
+        ;;
+
+        *)
+            printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
+
+            printf '\e[1;3%sm%10s\e[m %s\n' \
+                "$((${#nick}/2))" "${nick:0:10}" "$1"
+        ;;
+    esac
+}
+
 irc_output() {
-    read -sru 69 &&
+    while read -sru 69 || :; do
         case $REPLY in
             PING*)
                 printf 'PONG%s\n' "${REPLY##PING}" >&69
@@ -67,14 +116,19 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
-                printf '\e[1;3%sm%-*s\e[m %s\n' \
-                    "$((${#nick}/2))" 10 "${nick:0:9}" "$mesg"
+                printf '\e[1;3%sm%10s\e[m %s\n' \
+                    "$((${#nick}/2))" "${nick:0:10}" "$mesg"
             ;;
 
-            *JOIN*)
+            *JOIN*|*QUIT*)
                 irc_parse "$REPLY"
 
-                printf '%s\n' "$nick has joined ${args[2]}"
+                case $REPLY in
+                    *JOIN*): '--> joined' ;;
+                    *QUIT*): '<-- left'   ;;
+                esac
+
+                printf '%10s %s\n' "${_## *}" "$nick has ${_%%* } ${args[2]}"
             ;;
 
             *NOTICE*)
@@ -85,6 +139,7 @@ irc_output() {
                 printf '%s\n' "$REPLY"
             ;;
         esac
+    done
 }
 
 main() {
@@ -95,12 +150,15 @@ main() {
     trap 'term_reset; kill 0' INT EXIT
     trap 'resize=1'           WINCH
 
+    irc_output &
+
     for ((;;)) {
-        irc_output
+        irc_input
 
         [[ $resize ]] && term_size
     }
 
+    wait
     return 0
 }
 
