@@ -57,8 +57,8 @@ irc_setup() {
 }
 
 irc_parse() {
-    mesg=${1##* :}
-    www=${1%% :*}
+    mesg=${1#* :}
+    www=${1%%$mesg*}
 
     read -ra args <<< "${www##:}"
 
