@@ -84,7 +84,9 @@ irc_printf() {
     printf -v msg_input "$@"
 
     printf %s "$msg_input"
-    printf %s "$msg_input" >> "/dev/shm/birch-$pid--current"
+    printf %s "$msg_input" >> "/dev/shm/birch-$pid-${to_chan:--current}"
+
+    to_chan=
 }
 
 irc_input() {
@@ -173,6 +175,8 @@ irc_output() {
 
             *PRIVMSG*)
                 irc_parse "$REPLY"
+
+                to_chan=${args[2]}
 
                 irc_printf '\e[1;3%sm%10s\e[m %s\n' \
                     "$((${#unick}/2))" "${unick:0:10}" "$mesg"
