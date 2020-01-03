@@ -67,8 +67,8 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
-                printf '\e[1;3%sm%s\e[m %s\n' \
-                    "$((${#nick}/2))" "$nick" "$mesg"
+                printf '\e[1;3%sm%-*s\e[m %s\n' \
+                    "$((${#nick}/2))" 10 "${nick:0:9}" "$mesg"
             ;;
 
             *JOIN*)
