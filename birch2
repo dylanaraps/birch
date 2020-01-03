@@ -218,8 +218,7 @@ get_args() {
 }
 
 usage() {
-    printf '%s\n' "usage: birch [-s host -u nick -p pass -c channel]"
-
+    printf 'usage: birch [-s host -u nick -p pass -c channel]\n'
     exit 1
 }
 
