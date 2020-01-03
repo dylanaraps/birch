@@ -41,7 +41,7 @@ get_term_size() {
 }
 
 setup_irc() {
-    exec 69<>"/dev/tcp/${host}/6667" || {
+    exec 69<>"/dev/tcp/$host/6667" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
         exit 1
     }
@@ -51,7 +51,7 @@ setup_irc() {
     printf 'PASS %s\n' "$pass" >&69
     printf 'JOIN %s\n' "$chan" >&69
 
-    channels=("$chan")
+    channels=("#${chan##\#}")
 }
 
 redraw() {
@@ -65,10 +65,10 @@ print_msg() {
     # way of coloring nicks differently without needing to keep
     # track of user+color.
     [[ $1 != "$nick" ]] &&
-        local nick_color="\\e[38;5;$((${#1}/2))m"
+        local nick_color=[38;5;$((${#1}/2))m
 
     printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
-    printf '%s' "$msgs"
+    printf %s "$msgs"
     hist+=("$msgs")
 }
 

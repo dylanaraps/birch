@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+#
+# birch - a simple irc client in bash
+
+esc() {
+    case $1 in
+        cursor_show):  "?25h"   ;;
+        cursor_hide):  "?25l"   ;;
+        clear_screen): "2J"     ;;
+        scroll_area):  "$2;$3r" ;;
+
+        *) return
+    esac
+
+    printf '\e[%b' "$_"
+}
+
+term_setup() {
+    esc cursor_hide
+    esc clear_screen
+    esc scroll_area 1 "$((LINES - 1))"
+
+    stty -echo
+}
+
+term_reset() {
+    esc clear_screen
+    esc scroll_area
+    esc cursor_show
+
+    stty echo
+
+    exec 69>&-
+}
+
+term_size() {
+    resize=
+
+    shopt -s checkwinsize; (:;:)
+}
+
+irc_setup() {
+    exec 69<>"/dev/tcp/${host:=irc.freenode.net}/6667" || {
+        printf '%s\n' "error: Couldn't connect to $host." >&2
+        exit 1
+    }
+
+    printf 'NICK %s\n' "${nick:=$USER}" >&69
+    printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
+    printf 'PASS %s\n' "${pass:-}" >&69
+    printf 'JOIN %s\n' "${chan:-#kisslinux}" >&69
+}
+
+irc_output() {
+    read -sru 69 &&
+        case $REPLY in
+            PING*)
+                printf 'PONG%s\n' "${REPLY##PING}" >&69
+            ;;
+
+            # :dylanaraps!~goldie@ppp-2-87-108-190.home.otenet.gr PRIVMSG #kisslinux :OK. Writing birch from scratch.
+            *PRIVMSG*)
+                # printf '%s\n' "${nick##*!} $msg"
+            ;;
+
+            *NOTICE*)
+                printf '%s\n' "${REPLY##*NOTICE }"
+            ;;
+
+            *)
+                printf '%s\n' "$REPLY"
+            ;;
+        esac
+}
+
+main() {
+    term_size
+    irc_setup
+    term_setup
+
+    trap 'term_reset; kill 0' INT EXIT
+    trap 'resize=1'           WINCH
+
+    for ((;;)) {
+        irc_output
+
+        [[ $resize ]] && term_size
+    }
+
+    return 0
+}
+
+main "$@"
