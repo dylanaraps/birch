@@ -61,8 +61,7 @@ irc_parse() {
     www=${1%%$mesg*}
 
     read -ra args <<< "${www##:}"
-
-    unick=${args[0]%%!*}
+    IFS='!@' read -r unick _ _ <<< "${args[0]}"
 }
 
 irc_printf() {
