@@ -53,7 +53,7 @@ irc_setup() {
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
-    printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
+    printf 'JOIN %s\n' "${chan:=#rice}" >&69
 }
 
 irc_parse() {
@@ -75,7 +75,7 @@ irc_input() {
     esc cursor_move "$LINES"
     esc clear_line
 
-    printf %s "${args[2]} > $msg"
+    printf %s "$chan > $msg"
 
     esc cursor_fake
     esc cursor_load
@@ -101,6 +101,24 @@ irc_input() {
 
 irc_cmd() {
     case $1 in
+        /j*)
+
+        ;;
+
+        /n*)
+            printf 'NICK %s\n' "${1/* }" >&69
+            nick=$_
+        ;;
+
+        /m*)
+            printf 'PRIVMSG %s\n' "${1/* }" >&69
+        ;;
+
+        /q*)
+            printf 'QUIT :%s\n' "${1/* }" >&69
+            exit
+        ;;
+
         /*)
             printf '%s\n' "error: ${1/ *} not implemented yet."
         ;;
@@ -108,7 +126,8 @@ irc_cmd() {
         *)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
 
-            printf '\e[1;3%sm%10s\e[m %s\n' \
+            # TODO: Don't duplicate this.
+            irc_printf '\e[1;3%sm%10s\e[m %s\n' \
                 "$((${#nick}/2))" "${nick:0:10}" "$1"
         ;;
     esac
@@ -132,15 +151,23 @@ irc_output() {
                 irc_parse "$REPLY"
 
                 case $REPLY in
-                    *JOIN*): '--> joined' ;;
-                    *QUIT*): '<-- left'   ;;
+                    *JOIN*): '-->joined' ;;
+                    *QUIT*): '<--left'   ;;
                 esac
 
-                irc_printf '%10s %s\n' "${_# *}" "$unick has ${_%* } ${args[2]}"
+                irc_printf '%10s %s\n' "${_::3}" \
+                    "$unick has ${_:3} ${args[2]}"
             ;;
 
             *NOTICE*)
                 irc_printf '%s\n' "${REPLY##*NOTICE }"
+            ;;
+
+            *NICK*)
+                irc_parse "$REPLY"
+
+                irc_printf '%10s %s\n' "--" \
+                    "$unick is now known as ${mesg##*:}"
             ;;
 
             *)
@@ -155,7 +182,7 @@ main() {
     irc_setup
     term_setup
 
-    trap 'term_reset; kill 0' INT EXIT
+    trap 'term_reset; >/dev/shm/irc; kill 0' INT EXIT
     trap 'resize=1'           WINCH
 
     irc_output &
