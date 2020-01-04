@@ -245,8 +245,8 @@ irc_output() {
                     *$'\001ACTION'*$'\001'*)
                         mesg=${mesg/$'\001ACTION'}
 
-                        printf -v out '%10s %s %s' \
-                            "*" "$unick" "${mesg/$'\001'}"
+                        printf -v out '%10s \e[1;3%sm%s\e[m %s' \
+                            "*" "$((${#unick}/2))" "$unick" "${mesg/$'\001'}"
 
                         irc_print "$out" "${args[2]}"
                     ;;
