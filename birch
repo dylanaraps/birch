@@ -61,15 +61,17 @@ irc_setup() {
         exit 1
     }
 
+    IFS=, read -ra channels <<< "${chan:=#kisslinux}"
+    chan=${channels[0]}
+
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
-    printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
+    printf 'JOIN %s\n' "${channels[@]}" >&69
 
     hist_focus
 
     msg_hist=("")
-    channels=("$chan")
 }
 
 irc_parse() {
@@ -293,7 +295,7 @@ get_args() {
             u)  nick=$OPTARG ;;
             p)  pass=$OPTARG ;;
             P)  port=$OPTARG ;;
-            c)  chan=\#${OPTARG##\#} ;;
+            c)  chan=$OPTARG ;;
             x)  comm=$OPTARG ;;
 
             \?) usage ;;
