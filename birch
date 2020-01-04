@@ -283,7 +283,7 @@ irc_output() {
             ;;
 
             *NOTICE*)
-                irc_print "${REPLY##*NOTICE}" "$chan"
+                irc_print "${REPLY##*NOTICE }" "$chan"
             ;;
 
             *NICK*)
