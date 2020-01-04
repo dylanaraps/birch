@@ -78,8 +78,6 @@ irc_parse() {
 }
 
 irc_print() {
-    echo "[[ $2 == \#* && $2 != $chan ]]"
-
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
 
@@ -125,8 +123,8 @@ irc_cmd() {
         "") ;;
 
         /j*)
-            printf 'JOIN %s\n' "${msg[1]}" >&69
-            printf 'NAMES\n' >&69
+            printf 'JOIN %s\n'  "${msg[1]}" >&69
+            printf 'NAMES %s\n' "${msg[1]}" >&69
 
             chan=$_
             resize=1
@@ -217,6 +215,8 @@ irc_output() {
                 chan=\#${REPLY##*\#}
                 chan=${chan/ *}
             ;;
+
+            *366*) ;;
 
             *)
                 irc_print "$REPLY" "$chan"
