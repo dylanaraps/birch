@@ -95,7 +95,7 @@ irc_input() {
     esc cursor_move "$LINES"
     esc clear_line
 
-    printf %s "$chan > $msg"
+    printf %s "$chan (${cch:=0}/$((${#channels[@]}-1))) > $msg"
 
     esc cursor_fake
     esc cursor_load
@@ -111,6 +111,18 @@ irc_input() {
                 irc_cmd "$msg"
                 msg_hist+=("$msg")
                 unset msg h c comp
+            ;;
+
+            $'\016'|$'\020')
+                case $REPLY in
+                    $'\016') ((cch=cch + 1 <= ${#channels[@]}-1 ? ++cch : 0)) ;;
+                    $'\020') ((cch=cch - 1 >= 0 ? --cch : ${#channels[@]}-1)) ;;
+                esac
+
+                chan=${channels[cch]}
+                resize=1
+
+                hist_focus
             ;;
 
             $'\t')
@@ -157,14 +169,14 @@ irc_input() {
 }
 
 irc_cmd() {
-    read -ra msg <<< "$1"
+    read -ra cmd <<< "$1"
 
     case $1 in
         "") ;;
 
         /j*)
-            printf 'JOIN %s\n'  "${msg[1]}" >&69
-            printf 'NAMES %s\n' "${msg[1]}" >&69
+            printf 'JOIN %s\n'  "${cmd[1]}" >&69
+            printf 'NAMES %s\n' "${cmd[1]}" >&69
 
             chan=$_
             resize=1
@@ -176,25 +188,25 @@ irc_cmd() {
         ;;
 
         /l*)
-            printf 'PART %s\n' "${msg[1]:-$chan}" >&69
+            printf 'PART %s\n' "${cmd[1]:-$chan}" >&69
         ;;
 
         /m*)
-            printf 'PRIVMSG %s :%s\n' "${msg[1]}" "${msg[2]}" >&69
+            printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[2]}" >&69
         ;;
 
         /n*)
-            printf 'NICK %s\n' "${msg[1]}" >&69
+            printf 'NICK %s\n' "${cmd[1]}" >&69
             nick=$_
         ;;
 
         /q*)
-            printf 'QUIT :%s\n' "${msg[1]}" >&69
+            printf 'QUIT :%s\n' "${cmd[1]}" >&69
             exit
         ;;
 
         /*)
-            printf '%s\n' "error: ${msg[0]} not implemented yet."
+            printf '%s\n' "error: ${cmd[0]} not implemented yet."
         ;;
 
         *)
@@ -261,6 +273,12 @@ irc_output() {
 
             *366*) ;;
 
+            *376*)
+                [[ $comm ]] && irc_cmd "$comm"
+
+                irc_print "$REPLY" "$chan"
+            ;;
+
             *)
                 irc_print "$REPLY" "$chan"
             ;;
@@ -269,12 +287,13 @@ irc_output() {
 }
 
 get_args() {
-    while getopts :s:u:p:c:v opt; do
+    while getopts :s:u:p:c:x:v opt; do
         case $opt in
             s)  host=$OPTARG ;;
             u)  nick=$OPTARG ;;
             p)  pass=$OPTARG ;;
             c)  chan=\#${OPTARG##\#} ;;
+            x)  comm=$OPTARG ;;
 
             \?) usage ;;
 
