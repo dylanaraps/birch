@@ -56,7 +56,7 @@ term_size() {
 }
 
 irc_setup() {
-    exec 69<>"/dev/tcp/${host:=irc.freenode.net}/6667" || {
+    exec 69<>"/dev/tcp/${host:=irc.freenode.net}/${port:-6667}" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
         exit 1
     }
@@ -287,11 +287,12 @@ irc_output() {
 }
 
 get_args() {
-    while getopts :s:u:p:c:x:v opt; do
+    while getopts :s:u:p:c:x:P:v opt; do
         case $opt in
             s)  host=$OPTARG ;;
             u)  nick=$OPTARG ;;
             p)  pass=$OPTARG ;;
+            P)  port=$OPTARG ;;
             c)  chan=\#${OPTARG##\#} ;;
             x)  comm=$OPTARG ;;
 
@@ -311,7 +312,7 @@ get_args() {
 }
 
 usage() {
-    printf 'usage: birch [-s host -u nick -p pass -c channel]\n'
+    printf 'usage: birch [-s host -u nick -p pass -P port -c channel]\n'
     exit 1
 }
 
