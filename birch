@@ -1,307 +1,288 @@
 #!/usr/bin/env bash
 #
-# birch - an IRC client written in pure bash.
+# birch - a simple irc client in bash
 
-setup_terminal() {
-    # Setup the terminal for the TUI.
-    # '\e[?1049h': Use alternative screen buffer.
-    # '\e[?25l':   Hide the cursor.
-    # '\e[2J':     Clear the screen.
-    # '\e[1;Nr':   Limit scrolling to scrolling area.
-    #              Also sets cursor to (0,0).
-    printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+esc() {
+    case $1 in
+        cursor_show):  "\\e[?25h"      ;;
+        cursor_hide):  "\\e[?25l"      ;;
+        cursor_save):  "\\e7"          ;;
+        cursor_load):  "\\e8"          ;;
+        cursor_move):  "\\e[$2;$3H"    ;;
+        cursor_fake):  "\\e[47m \\e[m" ;;
+        clear_screen): "\\e[2J"        ;;
+        clear_line):   "\\e[K"         ;;
+        scroll_area):  "\\e[$2;$3r"    ;;
 
-    # Disable echoing of pressed keys. This isn't pure bash
-    # but its essential when writing any kind of TUI. This
-    # can't be avoided nor can it be done in pure bash.
+        *) return
+    esac
+
+    printf %b "$_"
+}
+
+clean() {
+    term_reset
+    rm -f "$temp_dir/birch-$pid-"*
+    kill 0
+}
+
+hist_focus() {
+    : >> "$temp_dir/birch-$pid-$chan"
+    ln -sf "$temp_dir/birch-$pid-$chan" "$temp_dir/birch-$pid--current"
+}
+
+term_setup() {
+    esc cursor_hide
+    esc clear_screen
+    esc scroll_area 1 "$((LINES - 1))"
+
     stty -echo
 }
 
-reset_terminal() {
-    # Reset the terminal to a useable state (undo all changes).
-    # '\e[2J':    Clear the terminal.
-    # '\e[;r':    Set the scroll region to its default value.
-    # '\e[?25h':  Unhide the cursor.
-    #             Also sets cursor to (0,0).
-    # '\e[?1049l: Restore main screen buffer.
-    printf '\e[2J\e[;r\e[?25h\e[?1049l'
+term_reset() {
+    esc clear_screen
+    esc scroll_area
+    esc cursor_show
 
-    # Enable echoing of pressed keys. This isn't pure bash
-    # but its essential when writing any kind of TUI. This
-    # can't be avoided nor can it be done in pure bash.
     stty echo
+
+    exec 69>&-
 }
 
-get_term_size() {
-    # In bash 4+, enabling 'checkwinsize' inside of a
-    # script also sets the LINES and COLUMNS variables.
-    # 'checkwinsize' updates the variables after a command,
-    # so we run a command that does nothing.
+term_size() {
+    resize=
+
     shopt -s checkwinsize; (:;:)
 }
 
-setup_irc() {
-    exec 69<>"/dev/tcp/$host/6667" || {
+irc_setup() {
+    exec 69<>"/dev/tcp/${host:=irc.freenode.net}/6667" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
         exit 1
     }
 
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
-    printf 'PASS %s\n' "$pass" >&69
-    printf 'JOIN %s\n' "$chan" >&69
+    printf 'PASS %s\n' "${pass:-}" >&69
+    printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
 
-    channels=("#${chan##\#}")
+    hist_focus
 }
 
-redraw() {
-    # Clear the screen and print the last N lines of history.
-    printf '\e[2J\e[1;%sr' "$((LINES-1))"
-    printf '%s' "${hist[@]: -$((LINES-1))}"
+irc_parse() {
+    mesg=${1#* :}
+    www=${1%%$mesg*}
+
+    read -ra args <<< "${www##:}"
+    IFS='!@' read -r unick _ _ <<< "${args[0]}"
 }
 
-print_msg() {
-    # Nick color is based on nickname length. This is a cheap
-    # way of coloring nicks differently without needing to keep
-    # track of user+color.
-    [[ $1 != "$nick" ]] &&
-        local nick_color=[38;5;$((${#1}/2))m
+irc_print() {
+    echo "[[ $2 == \#* && $2 != $chan ]]"
 
-    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
-    printf %s "$msgs"
-    hist+=("$msgs")
+    if [[ $2 == \#* && "$2" != "$chan" ]]; then
+        printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
+
+    else
+        printf '%s\n' "$1"
+        printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
+    fi
 }
 
-irc_send() {
-    # This function runs every 0.01 seconds and checks for a key-press.
-    # On a key-press or when this times out it checks for a response
-    # from the server. As this function and irc_receive() run within 0.01ms
-    # the process is unnoticable to the user.
-    #
-    # This printf displays the prompt on the bottom of the window. The escape
-    # sequences are setup so that this function can run at any time without
-    # interrupting the current cursor position.
-    #
-    # '\e7':    Save cursor position.
-    # '\e[%sH': Move cursor to last line.
-    # '\r':     Move cursor to first column.
-    # '\e[K':   Clear the current line.
-    # '\e[47m': Change the background to white.
-    # '\e[m':   Clear formatting.
-    # '\e8':    Restore cursor position.
-    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+irc_input() {
+    esc cursor_save
+    esc cursor_move "$LINES"
+    esc clear_line
 
-    # The prompt works by "faking" user input. The cursor is a space character
-    # with its background set to white. Each pressed key appends to a string
-    # which is printed on each loop. The backspace key just removes the last
-    # character in the saved string.
-    #
-    # The user input string is only cleared on an enter key-press. This allows
-    # this function to be looped infinitely and even interrupted by other
-    # parts of the program without affecting the typed message.
-    IFS= read -rst 0.01 -n 1 &&
-        case "$REPLY" in
-            # Backspace.
+    printf %s "$chan > $msg"
+
+    esc cursor_fake
+    esc cursor_load
+
+    IFS= read -rsn 1 -t 0.1 &&
+        case $REPLY in
             $'\177'|$'\b')
-                msg="${msg%?}"
-                unset comp c h
+                msg=${msg%?}
             ;;
 
-            # Tab.
-            $'\t')
-                # Completion mode is the first char in the last word.
-                comp_type="${msg##* }"
-                comp_type="${comp_type:0:1}"
-
-                # Set completion list based on completion type.
-                case "$comp_type" in
-                    '#') comp_list="${channels[*]//\#}" ;;
-                    '@') comp_list="${users[*]}" ;;
-                    *)   return ;;
-                esac
-
-                # Generate a completion list once.
-                [[ -z ${comp[0]} ]] &&
-                    IFS=$'\n' read -d "" -ra comp \
-                        < <(compgen -W "$comp_list" "${msg/*"$comp_type"}")
-
-                # On each tab press, cycle through the completion list.
-                [[ -n ${comp[c]} ]] && {
-                    msg="${msg/"${comp_type}"*/${comp_type}${comp[c]}}"
-                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
-                }
-            ;;
-
-            # Enter.
             "")
                 irc_cmd "$msg"
-                msg_hist+=("$msg")
-                unset comp c msg h
+                msg=
             ;;
 
-            # If the input character is an escape, it's most likely
-            # an escape sequence. The next 1-2 characters are most
-            # likely '[' and '[A-Z]' and we need to ignore them.
-            $'\e') esc=1 ;;
-
-            # All other keys.
-            [[:print:]])
-                # Handle escape sequences (ignore them).
-                [[ $esc == 1 ]] && {
-                    [[ $REPLY == \[ ]] &&
-                        return
-
-                    # Command history Up.
-                    [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
-                        msg="${msg_hist[-++h]}"
-
-                    # Command history Down.
-                    [[ $REPLY == B && ${h:=0} != 0 ]] &&
-                        msg="${msg_hist[---h]}"
-
-                    esc=
-                    return
-                }
-
-                msg+="$REPLY"
-                unset comp c h
-            ;;
-        esac
-}
-
-irc_receive() {
-    # Check received data from the server every 0.1ms or when a key is
-    # pressed. The 0.001ms timeout ensures that checking for data doesn't
-    # block user input.
-    read -srt 0.002 -u 69 &&
-        case "$REPLY" in
-            PING*)
-                printf 'PONG %s\n' "${REPLY/PING }" >&69
-            ;;
-
-            :*"$host NICK"*)
-                IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
-            ;;
-
-            :*"PRIVMSG $chan"*)
-                IFS=' :!@' read -r _ _ user _ _ mesg <<< "$REPLY"
-
-                # TODO: Parse formatting properly.
-                mesg="${mesg//[[^:print:]]}"
-
-                print_msg "$user" "$mesg"
-            ;;
-
-            :*353*)
-                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
-                users+=("${user[@]//[^a-zA-Z0-9=\\;]}")
-            ;;
+            $'\e') ;;
 
             *)
-                printf '%s\n' "${REPLY/*:}"
-                hist+=("${REPLY/*:}"$'\n')
+                msg+=$REPLY
             ;;
         esac
 }
 
 irc_cmd() {
-    case "$1" in
-        '/j'*)
-            # Instead of logging the messages for unfocused channels,
-            # leave a channel before joining another one. This 'hack'
-            # causes the IRC server to send us the latest messages.
-            printf 'PART %s\n' "$chan" >&69
-            printf 'JOIN %s\n' "${1/* }" >&69
+    read -ra msg <<< "$1"
 
-            chan="$_"
-            channels+=("$chan")
-            users=()
+    case $1 in
+        "") ;;
+
+        /j*)
+            printf 'JOIN %s\n' "${msg[1]}" >&69
+            printf 'NAMES\n' >&69
+
+            chan=$_
+            resize=1
+
+            hist_focus
         ;;
 
-        '/n'*)
-            printf 'NICK %s\n' "${1/* }" >&69
-            nick="$_"
+        /l*)
+            printf 'PART %s\n' "${msg[1]:-$chan}" >&69
         ;;
 
-        '/m'*)
-            printf 'PRIVMSG %s\n' "${1/* }" >&69
+        /m*)
+            printf 'PRIVMSG %s :%s\n' "${msg[1]}" "${msg[2]}" >&69
         ;;
 
-        '/q'*)
-            printf 'QUIT :%s\n' "${1/* }" >&69
+        /n*)
+            printf 'NICK %s\n' "${msg[1]}" >&69
+            nick=$_
+        ;;
+
+        /q*)
+            printf 'QUIT :%s\n' "${msg[1]}" >&69
             exit
         ;;
 
-        '/'*)
-            printf '%s\n' "error: ${1/ *} not implemented yet."
+        /*)
+            printf '%s\n' "error: ${msg[0]} not implemented yet."
         ;;
 
-        [[:print:]]*)
+        *)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
-            print_msg "$nick" "$1"
+
+            printf -v out '\e[1;3%sm%10s\e[m %s' \
+                "$((${#nick}/2))" "${nick:0:10}" "$1"
+
+            irc_print "$out" "$chan"
         ;;
     esac
 }
 
+irc_output() {
+    while read -sru 69 || :; do
+        REPLY=${REPLY%%$'\r'*}
+
+        case $REPLY in
+            PING*)
+                printf 'PONG%s\n' "${REPLY##PING}" >&69
+            ;;
+
+            *PRIVMSG*)
+                irc_parse "$REPLY"
+
+                printf -v out '\e[1;3%sm%10s\e[m %s' \
+                    "$((${#unick}/2))" "${unick:0:10}" "$mesg"
+
+                irc_print "$out" "${args[2]}"
+            ;;
+
+            *JOIN*|*PART*|*QUIT*)
+                REPLY=${REPLY:1}
+
+                case $REPLY in
+                    *JOIN*): '-->joined' ;;
+                    *PART*): '<--left'   ;;
+                    *QUIT*): '<--quit'   ;;
+                esac
+
+                printf -v out '%10s %s' "${_::3}" \
+                    "${REPLY%%\!*} has ${_:3} #${REPLY##*\#}"
+
+                irc_print "$out" "$chan"
+            ;;
+
+            *NOTICE*)
+                irc_print "${REPLY##*NOTICE}" "$chan"
+            ;;
+
+            *NICK*)
+                irc_parse "$REPLY"
+
+                irc_print -v out '%10s %s\n' "--" \
+                    "$unick is now known as $mesg"
+
+                irc_print "$out" "$chan"
+            ;;
+
+            *353*)
+                chan=\#${REPLY##*\#}
+                chan=${chan/ *}
+            ;;
+
+            *)
+                irc_print "$REPLY" "$chan"
+            ;;
+        esac
+    done
+}
+
 get_args() {
-    while getopts ":s:u:p:c:v" opt; do
-        case "$opt" in
-            's') host="$OPTARG" ;;
-            'u') nick="$OPTARG" ;;
-            'p') pass="$OPTARG" ;;
-            'c') chan="$OPTARG" ;;
-            '?') usage ;;
+    while getopts :s:u:p:c:v opt; do
+        case $opt in
+            s)  host=$OPTARG ;;
+            u)  nick=$OPTARG ;;
+            p)  pass=$OPTARG ;;
+            c)  chan=\#${OPTARG##\#} ;;
+
+            \?) usage ;;
 
             v)
-                printf '%s\n' "birch 0.0.1"
+                printf 'birch 0.0.1\n'
                 exit
             ;;
 
             :)
-                printf '%s\n' "Option -$OPTARG requires an argument." >&2
+                printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
                 exit 1
             ;;
         esac
     done
-
-    [[ -z $host ]] && usage
 }
 
 usage() {
-    printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
-        "usage: [birch -s host [-u nick -p pass -c channel]]" \
-        "-s server      Server to connect to (required)." \
-        "-u nick        Username to use." \
-        "-p password    Password to use." \
-        "-c channel     Channel to join."
+    printf 'usage: birch [-s host -u nick -p pass -c channel]\n'
     exit 1
 }
 
+
 main() {
+    pid=$$
+
     get_args "$@"
-    get_term_size
-    setup_irc
-    setup_terminal
+    term_size
 
-    # Leave the terminal in a useable state and close the connection on exit.
-    trap 'reset_terminal; exec 69>&-' EXIT
+    : > "${temp_dir:=/tmp}/birch-$pid--current"
 
-    # SIGWINCH is asynchronous and causes issues during read loops.
-    # Instead of doing anything we set a variable and handle the
-    # resize synchronously after the server and input read time-out.
-    trap 'resize=1' WINCH
+    irc_setup
+    term_setup
+
+    trap clean    INT EXIT
+    trap resize=1 WINCH
+
+    irc_output &
 
     for ((;;)) {
-        irc_send
-        irc_receive
+        irc_input
 
-        # Make 'SIGWINCH' synchronous (see above trap).
-        [[ $resize == 1 ]] && {
-            get_term_size
-            redraw
-            resize=0
+        [[ $resize ]] && {
+            term_size
+            term_setup
+
+            printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
         }
     }
+
+    wait
+    return 0
 }
 
 main "$@"

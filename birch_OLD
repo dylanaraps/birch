@@ -1,0 +1,307 @@
+#!/usr/bin/env bash
+#
+# birch - an IRC client written in pure bash.
+
+setup_terminal() {
+    # Setup the terminal for the TUI.
+    # '\e[?1049h': Use alternative screen buffer.
+    # '\e[?25l':   Hide the cursor.
+    # '\e[2J':     Clear the screen.
+    # '\e[1;Nr':   Limit scrolling to scrolling area.
+    #              Also sets cursor to (0,0).
+    printf '\e[?1049h\e[?25l\e[2J\e[1;%sr' "$((LINES-1))"
+
+    # Disable echoing of pressed keys. This isn't pure bash
+    # but its essential when writing any kind of TUI. This
+    # can't be avoided nor can it be done in pure bash.
+    stty -echo
+}
+
+reset_terminal() {
+    # Reset the terminal to a useable state (undo all changes).
+    # '\e[2J':    Clear the terminal.
+    # '\e[;r':    Set the scroll region to its default value.
+    # '\e[?25h':  Unhide the cursor.
+    #             Also sets cursor to (0,0).
+    # '\e[?1049l: Restore main screen buffer.
+    printf '\e[2J\e[;r\e[?25h\e[?1049l'
+
+    # Enable echoing of pressed keys. This isn't pure bash
+    # but its essential when writing any kind of TUI. This
+    # can't be avoided nor can it be done in pure bash.
+    stty echo
+}
+
+get_term_size() {
+    # In bash 4+, enabling 'checkwinsize' inside of a
+    # script also sets the LINES and COLUMNS variables.
+    # 'checkwinsize' updates the variables after a command,
+    # so we run a command that does nothing.
+    shopt -s checkwinsize; (:;:)
+}
+
+setup_irc() {
+    exec 69<>"/dev/tcp/$host/6667" || {
+        printf '%s\n' "error: Couldn't connect to $host." >&2
+        exit 1
+    }
+
+    printf 'NICK %s\n' "${nick:=$USER}" >&69
+    printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
+    printf 'PASS %s\n' "$pass" >&69
+    printf 'JOIN %s\n' "$chan" >&69
+
+    channels=("#${chan##\#}")
+}
+
+redraw() {
+    # Clear the screen and print the last N lines of history.
+    printf '\e[2J\e[1;%sr' "$((LINES-1))"
+    printf '%s' "${hist[@]: -$((LINES-1))}"
+}
+
+print_msg() {
+    # Nick color is based on nickname length. This is a cheap
+    # way of coloring nicks differently without needing to keep
+    # track of user+color.
+    [[ $1 != "$nick" ]] &&
+        local nick_color=[38;5;$((${#1}/2))m
+
+    printf -v msgs '\r\e[1m%b%s\e[m: %s\n' "$nick_color" "$1" "$2"
+    printf %s "$msgs"
+    hist+=("$msgs")
+}
+
+irc_send() {
+    # This function runs every 0.01 seconds and checks for a key-press.
+    # On a key-press or when this times out it checks for a response
+    # from the server. As this function and irc_receive() run within 0.01ms
+    # the process is unnoticable to the user.
+    #
+    # This printf displays the prompt on the bottom of the window. The escape
+    # sequences are setup so that this function can run at any time without
+    # interrupting the current cursor position.
+    #
+    # '\e7':    Save cursor position.
+    # '\e[%sH': Move cursor to last line.
+    # '\r':     Move cursor to first column.
+    # '\e[K':   Clear the current line.
+    # '\e[47m': Change the background to white.
+    # '\e[m':   Clear formatting.
+    # '\e8':    Restore cursor position.
+    printf '\e7\e[%sH\r\e[K%s\e[47m \e[m\e8' "$LINES" "$chan > $msg"
+
+    # The prompt works by "faking" user input. The cursor is a space character
+    # with its background set to white. Each pressed key appends to a string
+    # which is printed on each loop. The backspace key just removes the last
+    # character in the saved string.
+    #
+    # The user input string is only cleared on an enter key-press. This allows
+    # this function to be looped infinitely and even interrupted by other
+    # parts of the program without affecting the typed message.
+    IFS= read -rst 0.01 -n 1 &&
+        case "$REPLY" in
+            # Backspace.
+            $'\177'|$'\b')
+                msg="${msg%?}"
+                unset comp c h
+            ;;
+
+            # Tab.
+            $'\t')
+                # Completion mode is the first char in the last word.
+                comp_type="${msg##* }"
+                comp_type="${comp_type:0:1}"
+
+                # Set completion list based on completion type.
+                case "$comp_type" in
+                    '#') comp_list="${channels[*]//\#}" ;;
+                    '@') comp_list="${users[*]}" ;;
+                    *)   return ;;
+                esac
+
+                # Generate a completion list once.
+                [[ -z ${comp[0]} ]] &&
+                    IFS=$'\n' read -d "" -ra comp \
+                        < <(compgen -W "$comp_list" "${msg/*"$comp_type"}")
+
+                # On each tab press, cycle through the completion list.
+                [[ -n ${comp[c]} ]] && {
+                    msg="${msg/"${comp_type}"*/${comp_type}${comp[c]}}"
+                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
+                }
+            ;;
+
+            # Enter.
+            "")
+                irc_cmd "$msg"
+                msg_hist+=("$msg")
+                unset comp c msg h
+            ;;
+
+            # If the input character is an escape, it's most likely
+            # an escape sequence. The next 1-2 characters are most
+            # likely '[' and '[A-Z]' and we need to ignore them.
+            $'\e') esc=1 ;;
+
+            # All other keys.
+            [[:print:]])
+                # Handle escape sequences (ignore them).
+                [[ $esc == 1 ]] && {
+                    [[ $REPLY == \[ ]] &&
+                        return
+
+                    # Command history Up.
+                    [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
+                        msg="${msg_hist[-++h]}"
+
+                    # Command history Down.
+                    [[ $REPLY == B && ${h:=0} != 0 ]] &&
+                        msg="${msg_hist[---h]}"
+
+                    esc=
+                    return
+                }
+
+                msg+="$REPLY"
+                unset comp c h
+            ;;
+        esac
+}
+
+irc_receive() {
+    # Check received data from the server every 0.1ms or when a key is
+    # pressed. The 0.001ms timeout ensures that checking for data doesn't
+    # block user input.
+    read -srt 0.002 -u 69 &&
+        case "$REPLY" in
+            PING*)
+                printf 'PONG %s\n' "${REPLY/PING }" >&69
+            ;;
+
+            :*"$host NICK"*)
+                IFS=$' \r' read -r _ _ nick _ <<< "$REPLY"
+            ;;
+
+            :*"PRIVMSG $chan"*)
+                IFS=' :!@' read -r _ _ user _ _ mesg <<< "$REPLY"
+
+                # TODO: Parse formatting properly.
+                mesg="${mesg//[[^:print:]]}"
+
+                print_msg "$user" "$mesg"
+            ;;
+
+            :*353*)
+                IFS=$' \r' read -ra user <<< "${REPLY##*:}"
+                users+=("${user[@]//[^a-zA-Z0-9=\\;]}")
+            ;;
+
+            *)
+                printf '%s\n' "${REPLY/*:}"
+                hist+=("${REPLY/*:}"$'\n')
+            ;;
+        esac
+}
+
+irc_cmd() {
+    case "$1" in
+        '/j'*)
+            # Instead of logging the messages for unfocused channels,
+            # leave a channel before joining another one. This 'hack'
+            # causes the IRC server to send us the latest messages.
+            printf 'PART %s\n' "$chan" >&69
+            printf 'JOIN %s\n' "${1/* }" >&69
+
+            chan="$_"
+            channels+=("$chan")
+            users=()
+        ;;
+
+        '/n'*)
+            printf 'NICK %s\n' "${1/* }" >&69
+            nick="$_"
+        ;;
+
+        '/m'*)
+            printf 'PRIVMSG %s\n' "${1/* }" >&69
+        ;;
+
+        '/q'*)
+            printf 'QUIT :%s\n' "${1/* }" >&69
+            exit
+        ;;
+
+        '/'*)
+            printf '%s\n' "error: ${1/ *} not implemented yet."
+        ;;
+
+        [[:print:]]*)
+            printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
+            print_msg "$nick" "$1"
+        ;;
+    esac
+}
+
+get_args() {
+    while getopts ":s:u:p:c:v" opt; do
+        case "$opt" in
+            's') host="$OPTARG" ;;
+            'u') nick="$OPTARG" ;;
+            'p') pass="$OPTARG" ;;
+            'c') chan="$OPTARG" ;;
+            '?') usage ;;
+
+            v)
+                printf '%s\n' "birch 0.0.1"
+                exit
+            ;;
+
+            :)
+                printf '%s\n' "Option -$OPTARG requires an argument." >&2
+                exit 1
+            ;;
+        esac
+    done
+
+    [[ -z $host ]] && usage
+}
+
+usage() {
+    printf '%s\n\t%s\n\t%s\n\t%s\n\t%s\n' \
+        "usage: [birch -s host [-u nick -p pass -c channel]]" \
+        "-s server      Server to connect to (required)." \
+        "-u nick        Username to use." \
+        "-p password    Password to use." \
+        "-c channel     Channel to join."
+    exit 1
+}
+
+main() {
+    get_args "$@"
+    get_term_size
+    setup_irc
+    setup_terminal
+
+    # Leave the terminal in a useable state and close the connection on exit.
+    trap 'reset_terminal; exec 69>&-' EXIT
+
+    # SIGWINCH is asynchronous and causes issues during read loops.
+    # Instead of doing anything we set a variable and handle the
+    # resize synchronously after the server and input read time-out.
+    trap 'resize=1' WINCH
+
+    for ((;;)) {
+        irc_send
+        irc_receive
+
+        # Make 'SIGWINCH' synchronous (see above trap).
+        [[ $resize == 1 ]] && {
+            get_term_size
+            redraw
+            resize=0
+        }
+    }
+}
+
+main "$@"
