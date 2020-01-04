@@ -36,7 +36,7 @@ term_setup() {
     esc clear_screen
     esc scroll_area 1 "$((LINES - 1))"
 
-    stty -echo
+    stty -echo 2>/dev/null
 }
 
 term_reset() {
@@ -44,7 +44,7 @@ term_reset() {
     esc scroll_area
     esc cursor_show
 
-    stty echo
+    stty echo 2>/dev/null
 
     exec 69>&-
 }
