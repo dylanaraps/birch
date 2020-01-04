@@ -67,7 +67,9 @@ irc_setup() {
     printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
 
     hist_focus
+
     msg_hist=("")
+    channels=("$chan")
 }
 
 irc_parse() {
@@ -102,13 +104,32 @@ irc_input() {
         case $REPLY in
             $'\177'|$'\b')
                 msg=${msg%?}
-                unset h
+                unset h c comp
             ;;
 
             "")
                 irc_cmd "$msg"
                 msg_hist+=("$msg")
-                unset msg h
+                unset msg h c comp
+            ;;
+
+            $'\t')
+                word=${msg##* }
+                word=${word%% *}
+                comp_type=${word:0:1}
+
+                case $comp_type in
+                    \#) comp_list=${channels[*]} ;;
+                    *)  return ;;
+                esac
+
+                [[ ${comp[0]} ]] ||
+                    mapfile -t comp < <(compgen -W "$comp_list" "$word")
+
+                [[ ${comp[c]} ]] && {
+                    msg=${msg%%"$word"}${comp[c]}
+                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
+                }
             ;;
 
             $'\e') esc=1 ;;
@@ -129,7 +150,7 @@ irc_input() {
                 }
 
                 msg+=$REPLY
-                unset h
+                unset comp c h
             ;;
         esac
 }
@@ -146,6 +167,9 @@ irc_cmd() {
 
             chan=$_
             resize=1
+
+            [[ " ${channels[*]} " != *" $chan "* ]] &&
+                channels+=("$chan")
 
             hist_focus
         ;;
