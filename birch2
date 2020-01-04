@@ -91,6 +91,8 @@ irc_parse() {
 }
 
 irc_print() {
+    echo "[[ $2 == \#* && $2 != $chan ]]"
+
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
 
@@ -221,6 +223,11 @@ irc_output() {
                     "$unick is now known as $mesg"
 
                 irc_print "$out" "$chan"
+            ;;
+
+            *353*)
+                chan=\#${REPLY##*\#}
+                chan=${chan/ *}
             ;;
 
             *)
