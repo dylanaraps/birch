@@ -243,6 +243,9 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
+                [[ $mesg == *$nick* ]] &&
+                    mesg=${mesg//$nick/$'\e[1;3'$((${#unick}/2))m$nick$'\e[m'}
+
                 case $REPLY in
                     *$'\001ACTION'*$'\001'*)
                         mesg=${mesg/$'\001ACTION'}
