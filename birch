@@ -194,7 +194,7 @@ irc_cmd() {
         ;;
 
         /m*)
-            printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[2]}" >&69
+            printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[*]:2}" >&69
         ;;
 
         /n*)
