@@ -238,7 +238,7 @@ irc_output() {
                 printf -v out '%10s %s' "${_::3}" \
                     "${REPLY%%\!*} has ${_:3} #${REPLY##*\#}"
 
-                irc_print "$out" "$chan"
+                irc_print "$out" "#${REPLY##*\#}"
             ;;
 
             *NOTICE*)
