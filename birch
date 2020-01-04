@@ -295,13 +295,9 @@ irc_output() {
 
             *366*) ;;
 
-            *376*)
-                [[ $comm ]] && irc_cmd "$comm"
-
-                irc_print "$REPLY" "$chan"
-            ;;
-
             *)
+                [[ $REPLY == *376* && $comm ]] && irc_cmd "$comm"
+
                 irc_print "$REPLY" "$chan"
             ;;
         esac
