@@ -120,6 +120,7 @@ irc_input() {
 
                 case $comp_type in
                     \#) comp_list=${channels[*]} ;;
+                    /)  comp_list="/join /leave /msg /quit /nick" ;;
                     *)  return ;;
                 esac
 
