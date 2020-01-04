@@ -92,11 +92,11 @@ irc_parse() {
 
 irc_print() {
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
-        printf %s "$1" >> "$temp_dir/birch-$pid-$2"
+        printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
 
     else
-        printf %s "$1"
-        printf %s "$1" >> "$temp_dir/birch-$pid--current"
+        printf '%s\n' "$1"
+        printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
     fi
 }
 
@@ -169,7 +169,7 @@ irc_cmd() {
         *)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
 
-            printf -v out '\e[1;3%sm%10s\e[m %s\n' \
+            printf -v out '\e[1;3%sm%10s\e[m %s' \
                 "$((${#nick}/2))" "${nick:0:10}" "$1"
 
             irc_print "$out" "$chan"
@@ -179,6 +179,8 @@ irc_cmd() {
 
 irc_output() {
     while read -sru 69 || :; do
+        REPLY=${REPLY%%$'\r'*}
+
         case $REPLY in
             PING*)
                 printf 'PONG%s\n' "${REPLY##PING}" >&69
@@ -187,7 +189,7 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
-                printf -v out '\e[1;3%sm%10s\e[m %s\n' \
+                printf -v out '\e[1;3%sm%10s\e[m %s' \
                     "$((${#unick}/2))" "${unick:0:10}" "$mesg"
 
                 irc_print "$out" "${args[2]}"
@@ -202,7 +204,7 @@ irc_output() {
                     *QUIT*): '<--quit'   ;;
                 esac
 
-                printf -v out '%10s %s\n' "${_::3}" \
+                printf -v out '%10s %s' "${_::3}" \
                     "${REPLY%%\!*} has ${_:3} #${REPLY##*\#}"
 
                 irc_print "$out" "$chan"
