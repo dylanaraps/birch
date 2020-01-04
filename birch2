@@ -22,7 +22,26 @@ esc() {
 
 clean() {
     term_reset
+    rm -f "$temp_dir/birch-$pid-"*
     kill 0
+}
+
+hist_focus() {
+    : >> "$temp_dir/birch-$pid-$chan"
+    ln -sf "$temp_dir/birch-$pid-$chan" "$temp_dir/birch-$pid--current"
+}
+
+temp_setup() {
+    if : 2>/dev/null > "/dev/shm/birch-$pid--current"; then
+        temp_dir=/dev/shm
+
+    elif : > "/tmp/birch-$pid--current"; then
+        temp_dir=/tmp
+
+    else
+        printf 'error: Could not create tmp directory.\n'  >&2
+        exit 1
+    fi
 }
 
 term_setup() {
@@ -59,6 +78,8 @@ irc_setup() {
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
     printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
+
+    hist_focus
 }
 
 irc_parse() {
@@ -69,11 +90,14 @@ irc_parse() {
     IFS='!@' read -r unick _ _ <<< "${args[0]}"
 }
 
-irc_printf() {
-    # shellcheck disable=2059
-    printf -v msg_input "$@"
+irc_print() {
+    if [[ $2 == \#* && "$2" != "$chan" ]]; then
+        printf %s "$1" >> "$temp_dir/birch-$pid-$2"
 
-    printf %s "$msg_input"
+    else
+        printf %s "$1"
+        printf %s "$1" >> "$temp_dir/birch-$pid--current"
+    fi
 }
 
 irc_input() {
@@ -116,6 +140,8 @@ irc_cmd() {
 
             chan=$_
             resize=1
+
+            hist_focus
         ;;
 
         /l*)
@@ -143,8 +169,10 @@ irc_cmd() {
         *)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
 
-            irc_printf '\e[1;3%sm%10s\e[m %s\n' \
+            printf -v out '\e[1;3%sm%10s\e[m %s\n' \
                 "$((${#nick}/2))" "${nick:0:10}" "$1"
+
+            irc_print "$out" "$chan"
         ;;
     esac
 }
@@ -159,8 +187,10 @@ irc_output() {
             *PRIVMSG*)
                 irc_parse "$REPLY"
 
-                irc_printf '\e[1;3%sm%10s\e[m %s\n' \
+                printf -v out '\e[1;3%sm%10s\e[m %s\n' \
                     "$((${#unick}/2))" "${unick:0:10}" "$mesg"
+
+                irc_print "$out" "${args[2]}"
             ;;
 
             *JOIN*|*PART*|*QUIT*)
@@ -172,23 +202,27 @@ irc_output() {
                     *QUIT*): '<--quit'   ;;
                 esac
 
-                irc_printf '%10s %s\n' "${_::3}" \
+                printf -v out '%10s %s\n' "${_::3}" \
                     "${REPLY%%\!*} has ${_:3} #${REPLY##*\#}"
+
+                irc_print "$out" "$chan"
             ;;
 
             *NOTICE*)
-                irc_printf '%s\n' "${REPLY##*NOTICE }"
+                irc_print "${REPLY##*NOTICE}" "$chan"
             ;;
 
             *NICK*)
                 irc_parse "$REPLY"
 
-                irc_printf '%10s %s\n' "--" \
+                irc_print -v out '%10s %s\n' "--" \
                     "$unick is now known as $mesg"
+
+                irc_print "$out" "$chan"
             ;;
 
             *)
-                irc_printf '%s\n' "$REPLY"
+                irc_print "$REPLY" "$chan"
             ;;
         esac
     done
@@ -224,8 +258,11 @@ usage() {
 
 
 main() {
+    pid=$$
+
     get_args "$@"
     term_size
+    temp_setup
     irc_setup
     term_setup
 
@@ -240,6 +277,8 @@ main() {
         [[ $resize ]] && {
             term_size
             term_setup
+
+            printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
         }
     }
 
