@@ -31,19 +31,6 @@ hist_focus() {
     ln -sf "$temp_dir/birch-$pid-$chan" "$temp_dir/birch-$pid--current"
 }
 
-temp_setup() {
-    if : 2>/dev/null > "/dev/shm/birch-$pid--current"; then
-        temp_dir=/dev/shm
-
-    elif : > "/tmp/birch-$pid--current"; then
-        temp_dir=/tmp
-
-    else
-        printf 'error: Could not create tmp directory.\n'  >&2
-        exit 1
-    fi
-}
-
 term_setup() {
     esc cursor_hide
     esc clear_screen
@@ -269,7 +256,9 @@ main() {
 
     get_args "$@"
     term_size
-    temp_setup
+
+    : > "${temp_dir:=/tmp}/birch-$pid--current"
+
     irc_setup
     term_setup
 
