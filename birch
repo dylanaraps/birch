@@ -195,7 +195,9 @@ irc_cmd() {
 
         /me*)
             printf 'PRIVMSG %s :\001ACTION %s\001\n' "$chan" "${cmd[*]:1}" >&69
-            printf -v out '%10s %s %s' "*" "$nick" "${cmd[*]:1}"
+
+            printf -v out '%10s \e[1;3%sm%s\e[m %s' \
+                "*" "$((${#nick}/2))" "$nick" "${cmd[*]:1}"
 
             irc_print "$out" "$chan"
         ;;
