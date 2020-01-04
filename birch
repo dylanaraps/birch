@@ -67,6 +67,7 @@ irc_setup() {
     printf 'JOIN %s\n' "${chan:=#kisslinux}" >&69
 
     hist_focus
+    msg_hist=("")
 }
 
 irc_parse() {
@@ -101,17 +102,34 @@ irc_input() {
         case $REPLY in
             $'\177'|$'\b')
                 msg=${msg%?}
+                unset h
             ;;
 
             "")
                 irc_cmd "$msg"
-                msg=
+                msg_hist+=("$msg")
+                unset msg h
             ;;
 
-            $'\e') ;;
+            $'\e') esc=1 ;;
 
             *)
+                [[ $esc == 1 ]] && {
+                    [[ $REPLY == \[ ]] &&
+                        return
+
+                    [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
+                        msg=${msg_hist[-++h]}
+
+                    [[ $REPLY == B && ${h:=0} != 0 ]] &&
+                        msg=${msg_hist[---h]}
+
+                    esc=
+                    return
+                }
+
                 msg+=$REPLY
+                unset h
             ;;
         esac
 }
