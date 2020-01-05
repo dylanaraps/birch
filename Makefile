@@ -1,7 +1,7 @@
 install:
 
-cp ./birch /usr/bin
+    cp ./birch /usr/bin
 
 uninstall:
 
-rm -rf /usr/bin/birch
+    rm -rf /usr/bin/birch
