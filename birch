@@ -256,6 +256,10 @@ irc_output() {
                         irc_print "$out" "${args[2]}"
                     ;;
 
+                    *$'\001VERSION'*$'\001'*)
+                        printf 'PRIVMSG %s :\001VERSION %s\001\n' "$unick" "$version (https://github.com/dylanaraps/birch)" >&69
+                    ;;
+
                     *)
                         printf -v out '\e[1;3%sm%10s\e[m %s' \
                             "$((${#unick}/2))" "${unick:0:10}" "$mesg"
