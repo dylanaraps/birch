@@ -86,6 +86,9 @@ irc_print() {
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
 
+        [[ " ${channels[*]} " != *" $chan "* ]] &&
+            channels+=("$chan")
+
     else
         printf '%s\n' "$1"
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
