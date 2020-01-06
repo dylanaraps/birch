@@ -35,12 +35,16 @@ term_setup() {
     esc cursor_hide
     esc clear_screen
     esc scroll_area 1 "$((LINES - 1))"
+
+    stty -echo 2>/dev/null
 }
 
 term_reset() {
     esc clear_screen
     esc scroll_area
     esc cursor_show
+
+    stty echo 2>/dev/null
 
     exec 69>&-
 }
@@ -86,7 +90,7 @@ irc_print() {
             channels+=("$chan")
 
     else
-        printf '%s\n' "$1"
+        printf '\r%s\n' "$1"
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
     fi
 }
