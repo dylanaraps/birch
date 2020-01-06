@@ -288,7 +288,7 @@ irc_output() {
             *NICK*)
                 irc_parse "$REPLY"
 
-                irc_print -v out '%10s %s\n' "--" \
+                printf -v out '%10s %s\n' "--" \
                     "$unick is now known as $mesg"
 
                 irc_print "$out" "$chan"
