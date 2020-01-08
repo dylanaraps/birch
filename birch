@@ -55,6 +55,38 @@ term_size() {
     shopt -s checkwinsize; (:;:)
 }
 
+ignore_list_save(){
+    local chan="$1" msg="$2"
+
+    # source ignoreList ot be sure to have all entry's
+    # XXX: shellcheck try's to follow, just ignore
+    # shellcheck disable=SC1090
+    source "$temp_dir/birch-$pid-ignorelist"    
+
+    # export ignoreList to file to be reused in irc_output
+    ignore["$chan"]="$msg"
+    declare -p ignore > "$temp_dir/birch-$pid-ignorelist"
+}
+
+ignore_list_parse(){
+    local chan="$1" msg="$2"
+
+    # source ignoreList
+    # XXX: shellcheck try's to follow, just ignore
+    # shellcheck disable=SC1090
+    source "$temp_dir/birch-$pid-ignorelist"
+
+    # check if key exist. Key should be the channel name
+    # if it does not exist then we should return 0 so the message will be displayed
+    if [[ -z "${ignore["$chan"]}" ]]; then
+        return 0
+    else
+        # if the messages matches the pattern then we should return 1 so the message will not be displayed
+        [[ "$msg" =~ ${ignore["$chan"]} ]] && return 1
+        return 0
+    fi
+}
+
 irc_setup() {
     exec 69<>"/dev/tcp/${host:=irc.freenode.net}/${port:-6667}" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
@@ -90,8 +122,10 @@ irc_print() {
             channels+=("$chan")
 
     else
-        printf '\r%s\n' "$1"
-        printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
+        if ignore_list_parse "$chan" "$1"; then
+            printf '\r%s\n' "$1"
+            printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
+        fi
     fi
 }
 
@@ -217,6 +251,10 @@ irc_cmd() {
         /q*)
             printf 'QUIT :%s\n' "${cmd[1]}" >&69
             exit
+        ;;
+
+        /i*)
+            ignore_list_save "$chan" "${cmd[*]:1}"
         ;;
 
         /*)
@@ -353,6 +391,11 @@ main() {
     term_size
 
     : > "${temp_dir:=/tmp}/birch-$pid--current"
+
+    # create associative array and file for ignore list
+    # XXX: declare -g could probably be avoided with bash5+ and shopt -s localvar_inherit
+    declare -gA ignore
+    : > "${temp_dir:=/tmp}/birch-$pid-ignorelist"
 
     irc_setup
     term_setup
