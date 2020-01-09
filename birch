@@ -390,12 +390,12 @@ main() {
     get_args "$@"
     term_size
 
-    : > "${temp_dir:=/tmp}/birch-$pid--current"
+    : > "${temp_dir:=${TMPDIR:-/tmp}}/birch-$pid--current"
 
     # create associative array and file for ignore list
     # XXX: declare -g could probably be avoided with bash5+ and shopt -s localvar_inherit
     declare -gA ignore
-    : > "${temp_dir:=/tmp}/birch-$pid-ignorelist"
+    : > "${temp_dir}/birch-$pid-ignorelist"
 
     irc_setup
     term_setup
