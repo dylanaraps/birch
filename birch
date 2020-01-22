@@ -11,7 +11,7 @@ esc() {
         cursor_move):  "\\e[$2;$3H"    ;;
         cursor_fake):  "\\e[47m \\e[m" ;;
         clear_screen): "\\e[2J"        ;;
-        clear_line):   "\\e[${2:-2}K"         ;;
+        clear_line):   "\\e[${2:-2}K"  ;;
         scroll_area):  "\\e[$2;$3r"    ;;
 
         *) return
