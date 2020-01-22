@@ -86,8 +86,6 @@ irc_print() {
             channels+=("$chan")
 
     else
-        ((msg_count+=1))
-
         printf '\r%s\n' "$1"
         printf '%s\n'   "$1" >> "$temp_dir/birch-$pid--current"
     fi 2>/dev/null
