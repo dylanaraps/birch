@@ -11,7 +11,7 @@ esc() {
         cursor_move):  "\\e[$2;$3H"    ;;
         cursor_fake):  "\\e[47m \\e[m" ;;
         clear_screen): "\\e[2J"        ;;
-        clear_line):   "\\e[K"         ;;
+        clear_line):   "\\e[${2:-2}K"         ;;
         scroll_area):  "\\e[$2;$3r"    ;;
 
         *) return
@@ -66,8 +66,6 @@ irc_setup() {
     printf 'JOIN %s\n' "${channels[@]}" >&69
 
     hist_focus
-
-    msg_hist=("")
 }
 
 irc_parse() {
@@ -80,7 +78,6 @@ irc_parse() {
 
 irc_print() {
     esc cursor_move 0
-    echo "$start" >> ~/file
     ((start++ > 1)) && esc cursor_load
 
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
