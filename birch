@@ -198,7 +198,8 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
     mkdir -p "${temp_dir:=$TMPDIR/birch-$$}"
-    cd "$temp_dir" > current || exit 1
+    cd "$temp_dir" || exit 1
+    : > current
 
     irc_setup
     term_setup
