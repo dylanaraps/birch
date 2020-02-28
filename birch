@@ -367,7 +367,9 @@ main() {
             term_size
             term_setup
 
+            printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
             printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
+            printf '\e8\e[?25h'
         }
     }
 
