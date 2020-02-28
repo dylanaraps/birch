@@ -3,6 +3,7 @@
 # birch - a simple irc client in bash
 
 clean() {
+    irc_cmd "/quit ciao"
     printf '\e[2J\e[;r'
     exec 69>&-
     rm -rf -- "$temp_dir"
@@ -45,55 +46,48 @@ irc_setup() {
     hist_focus
 }
 
-irc_parse() {
-    mesg=${1#* :}
-    www=${1%%$mesg*}
-
-    read -ra args <<< "${www##:}"
-    IFS='!@' read -r unick _ _ <<< "${args[0]}"
-}
-
-irc_print() {
+prin() {
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
-    if [[ $2 == \#* && "$2" != "$chan" ]]; then
-        printf '%s\n' "$1" >> "$2"
+    raw=${2//$'\e[1;3'?m} 
+    raw=${raw//$'\e[m'}
 
-        [[ " ${chans[*]} " != *" $chan "* ]] &&
-            chans+=("$chan")
+    # shellcheck disable=2059
+    printf -v out "$@"
+    printf -v out '\e[%sC%s' "$((${#raw} > 10 ? 0 : 11 - ${#raw}))" "$out"
+
+    out=$(fold -sw 70 <<< "$out")
+    out=${out//$'\n'/$'\n'            }
+
+    if [[ $input ]]; then
+        printf '\r%s\n' "$out"
+
+    elif [[ $dest == \#* && $dest != "$chan" ]]; then
+        printf '%s\n'   "$out" >> "$dest"
+
+        [[ " ${chans[*]} " != *" $dest "* ]] &&
+            chans+=("$dest")
 
     else
-        printf '\r%s\n' "$1"
-        printf '%s\n'   "$1" >> current
-    fi 2>/dev/null
+        printf '\r%s\n' "$out"
+        printf '%s\n'   "$out" >> current
+    fi
 
     printf '\e8\e[?25h'
-}
-
-irc_mesg() {
-    mesg=$(fold -sw 60 <<< "$1")
-    mesg=${mesg//$'\n'/$'\n'           }
-
-    case $4 in
-        me) printf -v out '%10s \e[1;3%sm%s\e[m %s' \
-                \* "$((${#2}/2))" "$2" "${1/$'\001'}" ;;
-
-         *) printf -v out '\e[1;3%sm%10s\e[m %s' \
-                "$((${#2}/2))" "${2:0:10}" "$mesg" ;;
-    esac
-
-    irc_print "$out" "$3"
 }
 
 irc_cmd() {
     history -s "$1"
     read -ra cmd <<< "$1"
 
+    send() { parse "$1"; printf '%s\n' "$1" >&69; }
+
     case $1 in ""|?/*) ;;
-        /j*)
+        '/join '*)
             chan=${cmd[1]/\\}
 
-            printf 'JOIN %s\nNAMES %s\n' "$chan" "$chan" >&69
+            send "JOIN $chan"
+            send "NAMES $chan"
 
             [[ " ${chans[*]} " != *" $chan "* ]] &&
                 chans+=("$chan")
@@ -102,79 +96,50 @@ irc_cmd() {
             kill -WINCH 0
         ;;
 
-       /me*) printf 'PRIVMSG %s :\001ACTION %s\001\n' "$chan" "${cmd[*]:1}" >&69
-             irc_mesg "${cmd[*]:1}" "$nick" "$chan" me ;;
-
-        /l*) printf 'PART %s\n' "${cmd[1]:-$chan}" >&69 ;;
-        /m*) printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[*]:2}" >&69 ;;
-
-        /n*) printf 'NICK %s\n' "${cmd[1]}" >&69
-             nick=$_ ;;
-
-        /q*) printf 'QUIT :%s\n' "${cmd[1]}" >&69
-             exit ;;
-
-         /*) printf '%s\n' "error: ${cmd[0]} not implemented yet." ;;
-
-          *) printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
-             irc_mesg "$1" "$nick" "$chan"
+        '/nick '*) send "NICK ${cmd[1]}"; nick=${cmd[1]} ;;
+         '/msg '*) send "PRIVMSG ${cmd[1]} :${cmd[*]:2}" ;;
+          '/me '*) send "PRIVMSG $chan :\\001ACTION ${cmd[*]:1}\\001" ;;
+         '/part'*) send "PART ${cmd[1]:-$chan}" ;;
+         '/quit'*) send "QUIT :${cmd[1]}"; exit ;;
+               /*) send "NOTICE :${cmd[0]} not implemented yet" ;;
+                *) send "PRIVMSG $chan :$1" ;;
     esac
 }
 
-irc_output() {
-    while read -sru 69; do
-        REPLY=${REPLY%%$'\r'*}
+parse() {
+    fields=() word='' from='' from_split=()
 
-        case $REPLY in
-            PING*) printf 'PONG%s\n' "${REPLY##PING}" >&69 ;;
+    [[ "${1%% *}" == *[:@!]* ]] && {
+        from=${1%% *}
+        IFS='!@' read -ra from_split <<< "${from#:}"
+    }
 
-            *PRIVMSG*)
-                irc_parse "$REPLY"
+    while IFS= read -d '' -rn 1 c; do case $c in
+        ' ') [[ $word ]] && fields+=("$word") word= ;;
+        :) break ;;
+        *) word+=$c ;;
+    esac; done <<< "${1/"$from"}"
 
-                [[ $mesg == *$nick* ]] &&
-                    mesg=${mesg//$nick/$'\e[1;3'$((${#unick}/2))m$nick$'\e[m'}
+    whom=${from_split[0]:-$nick}
+    mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
+    dest=${fields[1]:-$chan}
 
-                [[ $REPLY == *$'\001ACTION'*$'\001'* ]] && 
-                    me=me || me=0
+    nc=$'\e[1;3'$((${#whom}/2))m$whom$'\e[m'
+    mc=$'\e[1;3'$((${#mesg}/2))m$mesg$'\e[m'
 
-                irc_mesg "${mesg/$'\001ACTION'}" "$unick" "${args[2]}" "$me"
-            ;;
-
-            *JOIN*|*PART*|*QUIT*)
-                REPLY=${REPLY:1}
-                unick=${REPLY%%\!*}
-                cur=\#${REPLY#*\#}
-                cur=${cur%% *}
-
-                case $REPLY in
-                    *JOIN*) cas='-->joined' ;;
-                    *PART*) cas='<--left'   ;;
-                    *QUIT*) cas='<--quit' cur=$chan
-                esac
-
-                printf -v out '%10s \e[1;3%sm%s\e[m %s \e[1m%s\e[m' \
-                    "${cas::3}" "$((${#unick}/2))" "$unick" \
-                    "has ${cas:3}" "$cur"
-
-                irc_print "$out" "$cur"
-            ;;
-
-            *NICK*)
-                irc_parse "$REPLY"
-
-                printf -v out '%10s %s' "--" \
-                    "$unick is now known as $mesg"
-
-                irc_print "$out" "$chan"
-            ;;
-
-            *353*) chan=\#${REPLY##*\#} chan=${chan/ *} ;;
-            *366*) ;;
-            *376*) irc_cmd "${x:-:/}" ;&
-
-            *) irc_print "$REPLY" "$chan" ;;
-        esac
-    done
+    case ${fields[0]} in
+        PRIVMSG) prin '%s %s\n' "$nc" "$mesg" ;;
+         NOTICE) prin '%s %s\n' NOTE "$mesg" ;;
+           PING) prin 'PONG%s\n' "${1##PING}" >&69 ;;
+           QUIT) prin '%s %s has quit %s\n'   \<-- "$nc" "$dest"  ;;
+           PART) prin '%s %s has left %s\n'   \<-- "$nc" "$dest"  ;;
+           JOIN) prin '%s %s has joined %s\n' --\> "$nc" "$dest"  ;;
+           NICK) prin '%s %s is now known as %s\n' -- "$nc" "$mc" ;;
+            353) chan=${fields[3]}  ;;
+            366) ;;
+            376) irc_cmd "${x:-:/}" ;&
+              *) prin '%s %s\n' RAW "$mesg"
+    esac
 }
 
 get_args() {
@@ -207,12 +172,16 @@ main() {
     trap clean       INT EXIT
     trap term_resize WINCH
 
-    irc_output & for ((;;)) {
+    while read -sru 69; do
+        parse "${REPLY%%$'\r'*}"
+    done & input=1
+    
+    while :; do
         read -erp "$chan (${cch:=1}/${#chans[@]}) > " && 
             irc_cmd "$REPLY"
 
         printf '\e[2K'
-    }
+    done
 }
 
 main "$@" ||:
