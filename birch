@@ -29,6 +29,15 @@ term_size() {
     shopt -s checkwinsize; (:;:)
 }
 
+term_resize() {
+    term_size
+    term_setup
+
+    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+    printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
+    printf '\e8\e[?25h'
+}
+
 irc_setup() {
     exec 69<>"/dev/tcp/${host:=irc.freenode.net}/${port:-6667}" || {
         printf '%s\n' "error: Couldn't connect to $host." >&2
@@ -85,13 +94,10 @@ irc_cmd() {
     read -ra cmd <<< "$1"
 
     case $1 in
-        "") ;;
-
-        :*) ;; # Prevent accidental ":" prefixing of e.g. commands
+        ""|\?*) ;;
 
         /j*)
-            printf 'JOIN %s\n'  "${cmd[1]}" >&69
-            printf 'NAMES %s\n' "${cmd[1]}" >&69
+            printf 'JOIN %s\n' "${cmd[1]}" >&69
 
             chan=$_
             resize=1
@@ -162,12 +168,12 @@ irc_output() {
 
                         printf -v out '%10s \e[1;3%sm%s\e[m %s' \
                             "*" "$((${#unick}/2))" "$unick" "${mesg/$'\001'}"
+
+                        irc_print "$out" "${args[2]}"
                     ;;
 
                     *)  irc_mesg "$mesg" "$unick" ;;
                 esac
-
-                irc_print "$out" "${args[2]}"
             ;;
 
             *JOIN*|*PART*|*QUIT*)
@@ -265,8 +271,8 @@ main() {
     irc_setup
     term_setup
 
-    trap clean    INT EXIT
-    trap resize=1 WINCH
+    trap clean       INT EXIT
+    trap term_resize WINCH
 
     irc_output &
 
@@ -275,19 +281,7 @@ main() {
             irc_cmd "$mesg"
             printf '\e[2K'
         }
-
-        [[ $resize ]] && {
-            term_size
-            term_setup
-
-            printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-            printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
-            printf '\e8\e[?25h'
-        }
     }
-
-    wait
-    return 0
 }
 
-main "$@"
+main "$@" ||:
