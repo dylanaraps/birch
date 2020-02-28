@@ -226,20 +226,18 @@ irc_output() {
 }
 
 get_args() {
-    while getopts :s:u:p:c:x:P:v opt; do
-        case $opt in
-            \?) printf 'birch -s host -u nick -p pass -P port -c channel\n' 
-                exit 1 ;;
+    while getopts :s:u:p:c:x:P:v opt; do case $opt in
+        \?) printf 'use: birch [-s host -u nick -p pass -P port -c chan]\n' 
+            exit 1 ;;
 
-            v)  printf 'birch 0.0.1\n'
-                exit 0 ;;
+        v)  printf 'birch 0.0.1\n'
+            exit 0 ;;
 
-            :)  printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
-                exit 1 ;;
+        :)  printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
+            exit 1 ;;
 
-            *)  declare -g "$opt=$OPTARG" 
-        esac
-    done
+        *)  declare -g "$opt=$OPTARG" 
+    esac; done
 }
 
 main() {
