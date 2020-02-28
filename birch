@@ -83,6 +83,7 @@ irc_mesg() {
 }
 
 irc_cmd() {
+    history -s "$1"
     read -ra cmd <<< "$1"
 
     case $1 in
@@ -139,6 +140,8 @@ irc_cmd() {
             irc_mesg "$1" "$nick" "$chan"
         ;;
     esac
+
+    printf '\e[2K'
 }
 
 irc_output() {
@@ -232,35 +235,24 @@ get_args() {
             c)  chan=$OPTARG ;;
             x)  comm=$OPTARG ;;
 
-            \?) usage ;;
+            \?) printf 'birch -s host -u nick -p pass -P port -c channel\n' 
+                exit 1 ;;
 
-            v)
-                printf 'birch 0.0.1\n'
-                exit
-            ;;
+            v)  printf 'birch 0.0.1\n'
+                exit ;;
 
-            :)
-                printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
+            :)  printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
                 exit 1
-            ;;
         esac
     done
 }
 
-usage() {
-    printf 'usage: birch [-s host -u nick -p pass -P port -c channel]\n'
-    exit 1
-}
-
-
 main() {
-    pid=$$
-
     get_args "$@"
     term_size
 
-    export HISTFILE=${TMPDIR:=/tmp}/birch-$pid-hist
-    mkdir -p "${temp_dir:=$TMPDIR/birch-$pid}"
+    export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
+    mkdir -p "${temp_dir:=$TMPDIR/birch-$$}"
     cd "$temp_dir" > current || exit 1
 
     irc_setup
@@ -269,14 +261,9 @@ main() {
     trap clean       INT EXIT
     trap term_resize WINCH
 
-    irc_output &
-
-    for ((;;)) {
-        read -erp "$chan (${cch:=1}/${#chans[@]}) > " mesg && {
-            history -s "$mesg"
-            irc_cmd "$mesg"
-            printf '\e[2K'
-        }
+    irc_output & for ((;;)) {
+        read -erp "$chan (${cch:=1}/${#chans[@]}) > " && 
+            irc_cmd "$REPLY"
     }
 }
 
