@@ -66,9 +66,7 @@ irc_print() {
     else
         printf '\r%s\n' "$1"
         printf '%s\n'   "$1" >> "$temp_dir/birch-$pid--current"
-    fi \
-    \
-    2>/dev/null
+    fi 2>/dev/null
 
     printf '\e8\e[?25h'
 }
