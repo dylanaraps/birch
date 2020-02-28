@@ -51,7 +51,7 @@ prin() {
     raw=${raw//$'\e[m'}
 
     printf -v out '\e[%sC%s' \
-        "$((${#raw} > 10 ? 0 : 11 - ${#raw}))" "$1"
+        "$((${#raw}>10?0:11-${#raw}))" "$1"
 
     out=$(fold -sw 70 <<< "$out")
     out=${out//$'\n'/$'\n'            }
@@ -61,9 +61,7 @@ prin() {
     case ${input:-$dest} in
         "$chan")      printf '%s\n' "$out" >> current ;&
         "$nick"|1|\*) printf '%s\n' "$out" ;;
-
-        "#"*) printf '%s\n' "$out" >> "$dest" 
-              [[ " ${chans[*]} " == *" $dest "* ]] || chans+=("$dest") ;;
+        \#*)          printf '%s\n' "$out" >> "$dest" ;;
     esac
 
     printf '\e8\e[?25h'
