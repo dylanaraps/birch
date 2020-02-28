@@ -4,13 +4,8 @@
 
 clean() {
     printf '\e[2J\e[;r\e[H'
-    exec 69>&-
-    rm -rf -- "$temp_dir"
+    rm -f -- "${TMPDIR:-/tmp}/birch-$$"*
     kill 0
-}
-
-hist_focus() {
-    ln -sf "$chan" current >> "./$chan"
 }
 
 term_setup() {
@@ -26,7 +21,7 @@ resize() {
     term_setup
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-    printf '%s\n' "$(< current)"
+    printf '%s\n' "$(< "${TMPDIR:-/tmp}/birch-$$")"
     printf '\e8\e[?25h'
 }
 
@@ -36,13 +31,9 @@ irc_setup() {
         exit 1
     }
 
-    IFS=, read -ra chans <<< "${chan:=${c:-#kisslinux}}"
-
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\nJOIN %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" "${chans[@]}" >&69
-
-    chan=${chans[0]}
-    hist_focus
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" \
+       "${chan:=${c:-#kisslinux}}" >&69
 }
 
 prin() {
@@ -56,15 +47,13 @@ prin() {
     out=$(fold -sw 70 <<< "$out")
     out=${out//$'\n'/$'\n'            }
 
-    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+    [[ $dest == \#* || $dest == \* || $dest == "$nick" ]] ||
+        return
 
-    case ${input:-$dest} in
-        "$nick"|"$chan"|1|\*) printf '%s\n' "$out" >> current
-                              printf '%s\n' "$out" ;;
-                         \#*) printf '%s\n' "$out" >> "$dest" ;;
-    esac
+    printf '\e[?25l\e7\e[%sH%s\n\e8\e[?25h' \
+        "$((LINES-1))" "$out"
 
-    printf '\e8\e[?25h'
+    printf '%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
 }
 
 irc_cmd() {
@@ -74,24 +63,10 @@ irc_cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&69; }
 
     case $1 in ""|?/*) ;;
-        '/join '*)
-            chan=${cmd[1]/\\}
-
-            send "JOIN $chan"
-            send "NAMES $chan"
-
-            [[ " ${chans[*]} " != *" $chan "* ]] &&
-                chans+=("$chan")
-
-            hist_focus
-            kill -WINCH 0
-        ;;
-
         '/nick '*) send "NICK ${cmd[1]}"; nick=${cmd[1]} ;;
          '/msg '*) send "PRIVMSG ${cmd[1]} :${cmd[*]:2}" ;;
           '/me '*) send "PRIVMSG $chan :\\001ACTION ${cmd[*]:1}\\001" ;;
-         '/part'*) send "PART ${cmd[1]:-$chan}" ;;
-         '/quit'*) send "QUIT :${cmd[1]}"; exit ;;
+         '/quit'*) send "QUIT :${cmd[1]}"; clean ;;
                /*) send "NOTICE :${cmd[0]} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
     esac
@@ -125,7 +100,6 @@ parse() {
            PART) prin "<-- $nc has left $dest" ;; 
            JOIN) prin "--> $nc has joined $dest" ;;
            NICK) prin "$nc is now known as $mc" ;; 
-            353) chan=${fields[3]}  ;;
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             366) ;;
             376) irc_cmd "${x:-:/}" ;;
@@ -153,24 +127,20 @@ main() {
     term_size
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
-    mkdir -p "${temp_dir:=$TMPDIR/birch-$$}"
-    cd "$temp_dir" || exit 1
-    : > current
 
     irc_setup
     term_setup
 
-    trap clean  INT EXIT
     trap resize WINCH
+    trap 'irc_cmd /quit' INT
 
     while read -sru 69; do
         parse "${REPLY%%$'\r'*}"
-    done & input=1
+    done &
     
     while :; do
-        read -erp "$chan (${cch:=1}/${#chans[@]}) > " && 
-            irc_cmd "$REPLY"
-
+        read -erp "$chan > " || continue
+        irc_cmd "$REPLY"
         printf '\e[2K'
     done
 }
