@@ -3,24 +3,18 @@
 # birch - a simple irc client in bash
 
 clean() {
-    term_reset
+    printf '\e[2J\e[;r'
+    exec 69>&-
     rm -rf -- "$temp_dir"
     kill 0
 }
 
 hist_focus() {
-    : >> "$chan"
-    ln -sf "$chan" current
+    ln -sf "$chan" current >> "./$chan"
 }
 
 term_setup() {
     printf '\e[2J\e[1;%sr\e[999H' "$((LINES-1))"
-}
-
-term_reset() {
-    printf '\e[2J\e[;r'
-
-    exec 69>&-
 }
 
 term_size() {
