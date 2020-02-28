@@ -180,98 +180,11 @@ irc_output() {
                     *QUIT*): '<--quit'   ;;
                 esac
 
-                #
-                # Here are logged output examples of $REPLY and #${REPLY##*\#}
-                # for our *JOIN*|*PART*|*QUIT* cases:
-                #
-
-                #
-                # Example 1 (*JOIN*)
-                #
-                # $REPLY:          fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net JOIN #kisslinux
-                #
-                # #${REPLY##*\#}:  #kisslinux
-                #
-                # COMMENT:         This works, no problems.
-                #
-
-                #
-                # Example 2 (*PART*)
-                #
-                # $REPLY:          fehawen!~fehawen@customer-46-39-113-66
-                #                  .stosn.net PART #archlinux
-                #
-                # #${REPLY##*\#}:  #archlinux
-                #
-                # COMMENT:         This works, no problems.
-                #
-
-                #
-                # Example 4 (*PART*)
-                #
-                # $REPLY:          fehawen!~fehawen@customer-46-39-113-66
-                #                  .stosn.net PART #archlinux-unregistered
-                #                   :requested by EMIYA (Moving to #archlinux.)
-                #
-                # #${REPLY##*\#}:  #archlinux.)
-                #
-                # COMMENT:         This causes problems, because we're passing
-                #                  "#archlinux.)" when we should be passing
-                #                  "#archlinux-unregistered"
-                #
-
-                #
-                # Example 4 (*QUIT*)
-                #
-                # $REPLY:          mantoshelis!~mmatuzas@2001:1ab8:1001:a010
-                #                  :127b:44ff:fef0:334b QUIT :Ping timeout:
-                #                   240 seconds
-                #
-                # #${REPLY##*\#}:  #mantoshelis!~mmatuzas@2001:1ab8:1001:a010
-                #                  :127b:44ff:fef0:334b QUIT :Ping timeout:
-                #                   240 seconds
-                #
-                # COMMENT:         This causes problems, because we're passing
-                #                  the entire #${REPLY##*\#} which doesn't
-                #                  contain any channel name
-                #
-
-                #
-                # Example 5 (*QUIT*)
-                #
-                # $REPLY:          fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net QUIT :Client Quit
-                #
-                # #${REPLY##*\#}:  #fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net QUIT :Client Quit
-                #
-                # COMMENT:         Same as Example 4
-                #
-
-                #
-                # PROPOSED CHANGES:
-                #
-
-                # Store our prefix and suffix (e.g. '-->joined') from case
                 cas=$_
-
-                # Keep everything after first octothorp occurence and prepend
-                # an octothorp, using '#' for shortest match rather than '##'
-                # for longest match
-                #
-                # This prevents us from getting e.g. "#archlinux.)" instead of
-                # "archlinux-unregistered ..."
-                cur="#${REPLY#*\#}"
-
-                # Keep everything before first [:space:] occurence, using
-                # longest match here with '%%' rather than shortest match
-                # with '%'
+                cur=\#${REPLY#*\#}
                 cur=${cur%% *}
 
-                # If case is *QUIT* we have no reference to channel in
-                # $REPLY or $cur, so we fall back to using $chan
-                [[ "${cas:3}" == "quit" ]] && cur=$chan
+                [[ ${cas:3} == quit ]] && cur=$chan
 
                 printf -v out '%10s \e[1;3%sm%s\e[m %s \e[1m%s\e[m' \
                     "${cas::3}" "$((${#unick}/2))" "$unick" \
