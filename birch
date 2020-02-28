@@ -259,7 +259,7 @@ main() {
     irc_output &
 
     for ((;;)) {
-        read -erp "${PS1:-> }" mesg && {
+        read -erp "$chan (${cch:=0}/$((${#channels[@]}-1))) > " mesg && {
             irc_cmd "$mesg"
             printf '\e[2K'
         }
