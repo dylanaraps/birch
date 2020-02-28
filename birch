@@ -100,8 +100,6 @@ irc_cmd() {
 parse() {
     fields=() word='' from='' from_split=()
 
-    printf '%s\n' "$1" >> raw
-
     [[ "${1%% *}" == *[:@!]* ]] && {
         from=${1%% *}
         IFS='!@' read -ra from_split <<< "${from#:}"
