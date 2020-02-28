@@ -2,24 +2,6 @@
 #
 # birch - a simple irc client in bash
 
-esc() {
-    case $1 in
-        cursor_show):  "\\e[?25h"      ;;
-        cursor_hide):  "\\e[?25l"      ;;
-        cursor_save):  "\\e7"          ;;
-        cursor_load):  "\\e8"          ;;
-        cursor_move):  "\\e[$2;$3H"    ;;
-        cursor_fake):  "\\e[47m \\e[m" ;;
-        clear_screen): "\\e[2J"        ;;
-        clear_line):   "\\e[${2:-2}K"  ;;
-        scroll_area):  "\\e[$2;$3r"    ;;
-
-        *) return
-    esac
-
-    printf %b "$_"
-}
-
 clean() {
     term_reset
     rm -f "$temp_dir/birch-$pid-"*
@@ -32,15 +14,11 @@ hist_focus() {
 }
 
 term_setup() {
-    esc clear_screen
-    esc scroll_area 1 "$((LINES - 1))"
-    esc cursor_move 999
+    printf '\e[2J\e[1;%sr\e[999H' "$((LINES-1))"
 }
 
 term_reset() {
-    esc clear_screen
-    esc scroll_area
-    esc cursor_show
+    printf '\e[2J\e[;r'
 
     exec 69>&-
 }
@@ -77,8 +55,7 @@ irc_parse() {
 }
 
 irc_print() {
-    esc cursor_move 0
-    ((start++ > 1)) && esc cursor_load
+    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
@@ -89,10 +66,11 @@ irc_print() {
     else
         printf '\r%s\n' "$1"
         printf '%s\n'   "$1" >> "$temp_dir/birch-$pid--current"
-    fi 2>/dev/null
+    fi \
+    \
+    2>/dev/null
 
-    esc cursor_save
-    esc cursor_move 999
+    printf '\e8\e[?25h'
 }
 
 irc_cmd() {
@@ -124,7 +102,7 @@ irc_cmd() {
             printf -v out '%10s \e[1;3%sm%s\e[m %s' \
                 "*" "$((${#nick}/2))" "$nick" "${cmd[*]:1}"
 
-            start=2; irc_print "$out" "$chan"
+            irc_print "$out" "$chan"
         ;;
 
         /m*)
@@ -151,7 +129,7 @@ irc_cmd() {
             printf -v out '\e[1;3%sm%10s\e[m %s' \
                 "$((${#nick}/2))" "${nick:0:10}" "$1"
 
-            start=2; irc_print "$out" "$chan"
+            irc_print "$out" "$chan"
         ;;
     esac
 }
@@ -283,9 +261,9 @@ main() {
     irc_output &
 
     for ((;;)) {
-        read -er && {
-            irc_cmd "$REPLY"
-            esc clear_line
+        read -erp "${PS1:-> }" mesg && {
+            irc_cmd "$mesg"
+            printf '\\e[2K'
         }
 
         [[ $resize ]] && {
