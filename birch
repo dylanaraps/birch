@@ -87,7 +87,7 @@ irc_cmd() {
     read -ra cmd <<< "$1"
 
     case $1 in
-        ""|\?*) ;;
+        ""|?/*) ;;
 
         /j*)
             printf 'JOIN %s\n'  "${cmd[1]/\\}" >&69
@@ -149,9 +149,7 @@ irc_output() {
         REPLY=${REPLY%%$'\r'*}
 
         case $REPLY in
-            PING*)
-                printf 'PONG%s\n' "${REPLY##PING}" >&69
-            ;;
+            PING*) printf 'PONG%s\n' "${REPLY##PING}" >&69 ;;
 
             *PRIVMSG*)
                 irc_parse "$REPLY"
@@ -196,10 +194,6 @@ irc_output() {
                 irc_print "$out" "$cur"
             ;;
 
-            *NOTICE*)
-                irc_print "${REPLY##*NOTICE }" "$chan"
-            ;;
-
             *NICK*)
                 irc_parse "$REPLY"
 
@@ -209,18 +203,11 @@ irc_output() {
                 irc_print "$out" "$chan"
             ;;
 
-            *353*)
-                chan=\#${REPLY##*\#}
-                chan=${chan/ *}
-            ;;
-
+            *353*) chan=\#${REPLY##*\#} chan=${chan/ *} ;;
             *366*) ;;
+            *376*) irc_cmd "${x:-:/}" ;&
 
-            *)
-                [[ $REPLY == *376* && ${x:-} ]] && irc_cmd "$x"
-
-                irc_print "$REPLY" "$chan"
-            ;;
+            *) irc_print "$REPLY" "$chan" ;;
         esac
     done
 }
