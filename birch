@@ -263,7 +263,7 @@ main() {
     for ((;;)) {
         read -erp "${PS1:-> }" mesg && {
             irc_cmd "$mesg"
-            printf '\\e[2K'
+            printf '\e[2K'
         }
 
         [[ $resize ]] && {
