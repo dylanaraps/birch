@@ -2,57 +2,38 @@
 #
 # birch - a simple irc client in bash
 
-esc() {
-    case $1 in
-        cursor_show):  "\\e[?25h"      ;;
-        cursor_hide):  "\\e[?25l"      ;;
-        cursor_save):  "\\e7"          ;;
-        cursor_load):  "\\e8"          ;;
-        cursor_move):  "\\e[$2;$3H"    ;;
-        cursor_fake):  "\\e[47m \\e[m" ;;
-        clear_screen): "\\e[2J"        ;;
-        clear_line):   "\\e[K"         ;;
-        scroll_area):  "\\e[$2;$3r"    ;;
-
-        *) return
-    esac
-
-    printf %b "$_"
-}
-
 clean() {
     term_reset
-    rm -f "$temp_dir/birch-$pid-"*
+    rm -rf -- "$temp_dir"
     kill 0
 }
 
 hist_focus() {
-    : >> "$temp_dir/birch-$pid-$chan"
-    ln -sf "$temp_dir/birch-$pid-$chan" "$temp_dir/birch-$pid--current"
+    : >> "$chan"
+    ln -sf "$chan" current
 }
 
 term_setup() {
-    esc cursor_hide
-    esc clear_screen
-    esc scroll_area 1 "$((LINES - 1))"
-
-    stty -echo 2>/dev/null
+    printf '\e[2J\e[1;%sr\e[999H' "$((LINES-1))"
 }
 
 term_reset() {
-    esc clear_screen
-    esc scroll_area
-    esc cursor_show
-
-    stty echo 2>/dev/null
+    printf '\e[2J\e[;r'
 
     exec 69>&-
 }
 
 term_size() {
-    resize=
-
     shopt -s checkwinsize; (:;:)
+}
+
+term_resize() {
+    term_size
+    term_setup
+
+    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+    cat current
+    printf '\e8\e[?25h'
 }
 
 irc_setup() {
@@ -70,8 +51,6 @@ irc_setup() {
     printf 'JOIN %s\n' "${channels[@]}" >&69
 
     hist_focus
-
-    msg_hist=("")
 }
 
 irc_parse() {
@@ -83,16 +62,20 @@ irc_parse() {
 }
 
 irc_print() {
+    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
-        printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
+        printf '%s\n' "$1" >> "$2"
 
         [[ " ${channels[*]} " != *" $chan "* ]] &&
             channels+=("$chan")
 
     else
         printf '\r%s\n' "$1"
-        printf '%s\n' "$1" >> "$temp_dir/birch-$pid--current"
-    fi
+        printf '%s\n'   "$1" >> current
+    fi 2>/dev/null
+
+    printf '\e8\e[?25h'
 }
 
 irc_mesg() {
@@ -102,106 +85,27 @@ irc_mesg() {
     printf -v out '\e[1;3%sm%10s\e[m %s' \
         "$((${#2}/2))" "${2:0:10}" "$mesg"
 
-    irc_print "$out" "$chan"
-}
-
-irc_input() {
-    esc cursor_save
-    esc cursor_move "$LINES"
-    esc clear_line
-
-    printf %s "$chan (${cch:=0}/$((${#channels[@]}-1))) > $msg"
-
-    esc cursor_fake
-    esc cursor_load
-
-    IFS= read -rsn 1 -t 0.1 &&
-        case $REPLY in
-            $'\177'|$'\b')
-                msg=${msg%?}
-                unset h c comp
-            ;;
-
-            "")
-                irc_cmd "$msg"
-                msg_hist+=("$msg")
-                unset msg h c comp
-            ;;
-
-            $'\016'|$'\020')
-                case $REPLY in
-                    $'\016') ((cch=cch + 1 <= ${#channels[@]}-1 ? ++cch : 0)) ;;
-                    $'\020') ((cch=cch - 1 >= 0 ? --cch : ${#channels[@]}-1)) ;;
-                esac
-
-                chan=${channels[cch]}
-                resize=1
-
-                hist_focus
-            ;;
-
-            $'\t')
-                word=${msg##* }
-                word=${word%% *}
-                comp_type=${word:0:1}
-
-                case $comp_type in
-                    \#) comp_list=${channels[*]} ;;
-                    /)  comp_list="/join /leave /me /msg /quit /nick" ;;
-                    *)  return ;;
-                esac
-
-                [[ ${comp[0]} ]] ||
-                    mapfile -t comp < <(compgen -W "$comp_list" "$word")
-
-                [[ ${comp[c]} ]] && {
-                    msg=${msg%%"$word"}${comp[c]}
-                    ((c=c >= ${#comp[@]}-1 ? 0 : ++c))
-                }
-            ;;
-
-            $'\e') esc=1 ;;
-
-            *)
-                [[ $esc == 1 ]] && {
-                    [[ $REPLY == \[ ]] &&
-                        return
-
-                    [[ $REPLY == A && ${h:=0} != "${#msg_hist[@]}" ]] &&
-                        msg=${msg_hist[-++h]}
-
-                    [[ $REPLY == B && ${h:=0} != 0 ]] &&
-                        msg=${msg_hist[---h]}
-
-                    esc=
-                    return
-                }
-
-                msg+=$REPLY
-                unset comp c h
-            ;;
-        esac
+    irc_print "$out" "$3"
 }
 
 irc_cmd() {
     read -ra cmd <<< "$1"
 
     case $1 in
-        "") ;;
-
-        :*) ;; # Prevent accidental ":" prefixing of e.g. commands
+        ""|\?*) ;;
 
         /j*)
-            printf 'JOIN %s\n'  "${cmd[1]}" >&69
-            printf 'NAMES %s\n' "${cmd[1]}" >&69
+            printf 'JOIN %s\n'  "${cmd[1]/\\}" >&69
+            printf 'NAMES %s\n' "${cmd[1]/\\}" >&69
 
             chan=$_
-            resize=1
 
             [[ " ${channels[*]} " != *" $chan "* ]] &&
                 channels+=("$chan")
 
             hist_focus
+
+            kill -WINCH 0
         ;;
 
         /l*)
@@ -238,7 +142,7 @@ irc_cmd() {
         *)
             printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
 
-            irc_mesg "$1" "$nick"
+            irc_mesg "$1" "$nick" "$chan"
         ;;
     esac
 }
@@ -268,7 +172,7 @@ irc_output() {
                         irc_print "$out" "${args[2]}"
                     ;;
 
-                    *)  irc_mesg "$mesg" "$unick" ;;
+                    *)  irc_mesg "$mesg" "$unick" "${args[2]}" ;;
                 esac
             ;;
 
@@ -282,98 +186,11 @@ irc_output() {
                     *QUIT*): '<--quit'   ;;
                 esac
 
-                #
-                # Here are logged output examples of $REPLY and #${REPLY##*\#}
-                # for our *JOIN*|*PART*|*QUIT* cases:
-                #
-
-                #
-                # Example 1 (*JOIN*)
-                #
-                # $REPLY:          fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net JOIN #kisslinux
-                #
-                # #${REPLY##*\#}:  #kisslinux
-                #
-                # COMMENT:         This works, no problems.
-                #
-
-                #
-                # Example 2 (*PART*)
-                #
-                # $REPLY:          fehawen!~fehawen@customer-46-39-113-66
-                #                  .stosn.net PART #archlinux
-                #
-                # #${REPLY##*\#}:  #archlinux
-                #
-                # COMMENT:         This works, no problems.
-                #
-
-                #
-                # Example 4 (*PART*)
-                #
-                # $REPLY:          fehawen!~fehawen@customer-46-39-113-66
-                #                  .stosn.net PART #archlinux-unregistered
-                #                   :requested by EMIYA (Moving to #archlinux.)
-                #
-                # #${REPLY##*\#}:  #archlinux.)
-                #
-                # COMMENT:         This causes problems, because we're passing
-                #                  "#archlinux.)" when we should be passing
-                #                  "#archlinux-unregistered"
-                #
-
-                #
-                # Example 4 (*QUIT*)
-                #
-                # $REPLY:          mantoshelis!~mmatuzas@2001:1ab8:1001:a010
-                #                  :127b:44ff:fef0:334b QUIT :Ping timeout:
-                #                   240 seconds
-                #
-                # #${REPLY##*\#}:  #mantoshelis!~mmatuzas@2001:1ab8:1001:a010
-                #                  :127b:44ff:fef0:334b QUIT :Ping timeout:
-                #                   240 seconds
-                #
-                # COMMENT:         This causes problems, because we're passing
-                #                  the entire #${REPLY##*\#} which doesn't
-                #                  contain any channel name
-                #
-
-                #
-                # Example 5 (*QUIT*)
-                #
-                # $REPLY:          fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net QUIT :Client Quit
-                #
-                # #${REPLY##*\#}:  #fehawen2!~fehawen2@customer-46-39-113-66
-                #                  .stosn.net QUIT :Client Quit
-                #
-                # COMMENT:         Same as Example 4
-                #
-
-                #
-                # PROPOSED CHANGES:
-                #
-
-                # Store our prefix and suffix (e.g. '-->joined') from case
                 cas=$_
-
-                # Keep everything after first octothorp occurence and prepend
-                # an octothorp, using '#' for shortest match rather than '##'
-                # for longest match
-                #
-                # This prevents us from getting e.g. "#archlinux.)" instead of
-                # "archlinux-unregistered ..."
-                cur="#${REPLY#*\#}"
-
-                # Keep everything before first [:space:] occurence, using
-                # longest match here with '%%' rather than shortest match
-                # with '%'
+                cur=\#${REPLY#*\#}
                 cur=${cur%% *}
 
-                # If case is *QUIT* we have no reference to channel in
-                # $REPLY or $cur, so we fall back to using $chan
-                [[ "${cas:3}" == "quit" ]] && cur=$chan
+                [[ ${cas:3} == quit ]] && cur=$chan
 
                 printf -v out '%10s \e[1;3%sm%s\e[m %s \e[1m%s\e[m' \
                     "${cas::3}" "$((${#unick}/2))" "$unick" \
@@ -449,29 +266,26 @@ main() {
     get_args "$@"
     term_size
 
-    : > "${temp_dir:=/tmp}/birch-$pid--current"
+    export HISTFILE=/tmp/birch-$pid-hist
+    mkdir -p "${temp_dir:=/tmp/birch-$pid}"
+    cd "$temp_dir" || exit 1
+    : > current
 
     irc_setup
     term_setup
 
-    trap clean    INT EXIT
-    trap resize=1 WINCH
+    trap clean       INT EXIT
+    trap term_resize WINCH
 
     irc_output &
 
     for ((;;)) {
-        irc_input
-
-        [[ $resize ]] && {
-            term_size
-            term_setup
-
-            printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
+        read -erp "$chan (${cch:=0}/$((${#channels[@]}-1))) > " mesg && {
+            history -s "$mesg"
+            irc_cmd "$mesg"
+            printf '\e[2K'
         }
     }
-
-    wait
-    return 0
 }
 
-main "$@"
+main "$@" ||:
