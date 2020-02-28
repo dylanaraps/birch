@@ -86,9 +86,7 @@ irc_cmd() {
     history -s "$1"
     read -ra cmd <<< "$1"
 
-    case $1 in
-        ""|?/*) ;;
-
+    case $1 in ""|?/*) ;;
         /j*)
             printf 'JOIN %s\n'  "${cmd[1]/\\}" >&69
             printf 'NAMES %s\n' "${cmd[1]/\\}" >&69
@@ -103,10 +101,6 @@ irc_cmd() {
             kill -WINCH 0
         ;;
 
-        /l*)
-            printf 'PART %s\n' "${cmd[1]:-$chan}" >&69
-        ;;
-
         /me*)
             printf 'PRIVMSG %s :\001ACTION %s\001\n' "$chan" "${cmd[*]:1}" >&69
 
@@ -116,29 +110,19 @@ irc_cmd() {
             irc_print "$out" "$chan"
         ;;
 
-        /m*)
-            printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[*]:2}" >&69
-        ;;
+        /l*) printf 'PART %s\n' "${cmd[1]:-$chan}" >&69 ;;
+        /m*) printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[*]:2}" >&69 ;;
 
-        /n*)
-            printf 'NICK %s\n' "${cmd[1]}" >&69
-            nick=$_
-        ;;
+        /n*) printf 'NICK %s\n' "${cmd[1]}" >&69
+             nick=$_ ;;
 
-        /q*)
-            printf 'QUIT :%s\n' "${cmd[1]}" >&69
-            exit
-        ;;
+        /q*) printf 'QUIT :%s\n' "${cmd[1]}" >&69
+             exit ;;
 
-        /*)
-            printf '%s\n' "error: ${cmd[0]} not implemented yet."
-        ;;
+         /*) printf '%s\n' "error: ${cmd[0]} not implemented yet." ;;
 
-        *)
-            printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
-
-            irc_mesg "$1" "$nick" "$chan"
-        ;;
+          *) printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
+             irc_mesg "$1" "$nick" "$chan"
     esac
 
     printf '\e[2K'
@@ -217,13 +201,13 @@ get_args() {
         \?) printf 'use: birch [-s host -u nick -p pass -P port -c chan]\n' 
             exit 1 ;;
 
-        v)  printf 'birch 0.0.1\n'
+         v) printf 'birch 0.0.1\n'
             exit 0 ;;
 
-        :)  printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
+         :) printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
             exit 1 ;;
 
-        *)  declare -g "$opt=$OPTARG" 
+         *) declare -g "$opt=$OPTARG" 
     esac; done
 }
 
