@@ -26,7 +26,7 @@ term_resize() {
     term_setup
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-    cat current
+    printf %s "$(< current)"
     printf '\e8\e[?25h'
 }
 
@@ -39,7 +39,7 @@ irc_setup() {
     IFS=, read -ra chans <<< "${chan:=${c:-#kisslinux}}"
 
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\nJOIN %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p:-}" "${chans[@]}"
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p:-}" "${chans[@]}" >&69
 
     chan=${chans[0]}
     hist_focus
@@ -54,7 +54,7 @@ irc_parse() {
 }
 
 irc_print() {
-    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+    printf '\e[?25l\e7\e[s\e[%sH' "$((LINES-1))"
 
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$2"
@@ -67,7 +67,7 @@ irc_print() {
         printf '%s\n'   "$1" >> current
     fi 2>/dev/null
 
-    printf '\e8\e[?25h'
+    printf '\e8\e[u\e[?25h'
 }
 
 irc_mesg() {
@@ -122,7 +122,7 @@ irc_cmd() {
 }
 
 irc_output() {
-    while read -sru 69 || :; do
+    while read -sru 69; do
         REPLY=${REPLY%%$'\r'*}
 
         case $REPLY in
