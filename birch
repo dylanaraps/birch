@@ -54,7 +54,7 @@ irc_parse() {
 }
 
 irc_print() {
-    printf '\e[?25l\e7\e[s\e[%sH' "$((LINES-1))"
+    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$2"
@@ -67,7 +67,7 @@ irc_print() {
         printf '%s\n'   "$1" >> current
     fi 2>/dev/null
 
-    printf '\e8\e[u\e[?25h'
+    printf '\e8\e[?25h'
 }
 
 irc_mesg() {
