@@ -82,33 +82,32 @@ irc_mesg() {
     irc_print "$out" "$3"
 }
 
+irc_me() {
+    printf -v out '%10s \e[1;3%sm%s\e[m %s' \
+        \* "$((${#2}/2))" "$2" "${mesg/$'\001'}"
+
+    irc_print "$out" "$3"
+}
+
 irc_cmd() {
     history -s "$1"
     read -ra cmd <<< "$1"
 
     case $1 in ""|?/*) ;;
         /j*)
-            printf 'JOIN %s\n'  "${cmd[1]/\\}" >&69
-            printf 'NAMES %s\n' "${cmd[1]/\\}" >&69
+            chan=${cmd[1]/\\}
 
-            chan=$_
+            printf 'JOIN %s\nNAMES %s\n' "$chan" "$chan" >&69
 
             [[ " ${chans[*]} " != *" $chan "* ]] &&
                 chans+=("$chan")
 
             hist_focus
-
             kill -WINCH 0
         ;;
 
-        /me*)
-            printf 'PRIVMSG %s :\001ACTION %s\001\n' "$chan" "${cmd[*]:1}" >&69
-
-            printf -v out '%10s \e[1;3%sm%s\e[m %s' \
-                "*" "$((${#nick}/2))" "$nick" "${cmd[*]:1}"
-
-            irc_print "$out" "$chan"
-        ;;
+       /me*) printf 'PRIVMSG %s :\001ACTION %s\001\n' "$chan" "${cmd[*]:1}" >&69
+             irc_me "${cmd[*]:1}" "$nick" "$chan" ;;
 
         /l*) printf 'PART %s\n' "${cmd[1]:-$chan}" >&69 ;;
         /m*) printf 'PRIVMSG %s :%s\n' "${cmd[1]}" "${cmd[*]:2}" >&69 ;;
@@ -143,12 +142,7 @@ irc_output() {
 
                 case $REPLY in
                     *$'\001ACTION'*$'\001'*)
-                        mesg=${mesg/$'\001ACTION'}
-
-                        printf -v out '%10s \e[1;3%sm%s\e[m %s' \
-                            "*" "$((${#unick}/2))" "$unick" "${mesg/$'\001'}"
-
-                        irc_print "$out" "${args[2]}"
+                        irc_me "${mesg/$'\001ACTION'}" "$unick" "${args[2]}"
                     ;;
 
                     *)  irc_mesg "$mesg" "$unick" "${args[2]}" ;;
@@ -158,18 +152,14 @@ irc_output() {
             *JOIN*|*PART*|*QUIT*)
                 REPLY=${REPLY:1}
                 unick=${REPLY%%\!*}
-
-                case $REPLY in
-                    *JOIN*): '-->joined' ;;
-                    *PART*): '<--left'   ;;
-                    *QUIT*): '<--quit'   ;;
-                esac
-
-                cas=$_
                 cur=\#${REPLY#*\#}
                 cur=${cur%% *}
 
-                [[ ${cas:3} == quit ]] && cur=$chan
+                case $REPLY in
+                    *JOIN*) cas='-->joined' ;;
+                    *PART*) cas='<--left'   ;;
+                    *QUIT*) cas='<--quit' cur=$chan
+                esac
 
                 printf -v out '%10s \e[1;3%sm%s\e[m %s \e[1m%s\e[m' \
                     "${cas::3}" "$((${#unick}/2))" "$unick" \
