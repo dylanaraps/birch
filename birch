@@ -37,13 +37,11 @@ irc_setup() {
     }
 
     IFS=, read -ra chans <<< "${chan:=${c:-#kisslinux}}"
+
+    printf 'NICK %s\nUSER %s - - :%s\nPASS %s\nJOIN %s\n' \
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p:-}" "${chans[@]}"
+
     chan=${chans[0]}
-
-    printf 'NICK %s\n' "${nick:=${u:-$USER}}" >&69
-    printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
-    printf 'PASS %s\n' "${p:-}" >&69
-    printf 'JOIN %s\n' "${chans[@]}" >&69
-
     hist_focus
 }
 
