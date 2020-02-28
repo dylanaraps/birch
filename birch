@@ -266,8 +266,8 @@ main() {
     get_args "$@"
     term_size
 
-    export HISTFILE=/tmp/birch-$pid-hist
-    mkdir -p "${temp_dir:=/tmp/birch-$pid}"
+    export HISTFILE=${TMPDIR:=/tmp}/birch-$pid-hist
+    mkdir -p "${temp_dir:=$TMPDIR/birch-$pid}"
     cd "$temp_dir" || exit 1
     : > current
 
