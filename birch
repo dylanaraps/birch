@@ -31,17 +31,17 @@ term_resize() {
 }
 
 irc_setup() {
-    exec 69<>"/dev/tcp/${host:=irc.freenode.net}/${port:-6667}" || {
-        printf '%s\n' "error: Couldn't connect to $host." >&2
+    exec 69<>"/dev/tcp/${s:=irc.freenode.net}/${P:-6667}" || {
+        printf '%s\n' "error: Couldn't connect to $s." >&2
         exit 1
     }
 
-    IFS=, read -ra chans <<< "${chan:=#kisslinux}"
+    IFS=, read -ra chans <<< "${chan:=${c:-#kisslinux}}"
     chan=${chans[0]}
 
-    printf 'NICK %s\n' "${nick:=$USER}" >&69
+    printf 'NICK %s\n' "${nick:=${u:-$USER}}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
-    printf 'PASS %s\n' "${pass:-}" >&69
+    printf 'PASS %s\n' "${p:-}" >&69
     printf 'JOIN %s\n' "${chans[@]}" >&69
 
     hist_focus
@@ -217,7 +217,7 @@ irc_output() {
             *366*) ;;
 
             *)
-                [[ $REPLY == *376* && $comm ]] && irc_cmd "$comm"
+                [[ $REPLY == *376* && ${x:-} ]] && irc_cmd "$x"
 
                 irc_print "$REPLY" "$chan"
             ;;
@@ -228,21 +228,16 @@ irc_output() {
 get_args() {
     while getopts :s:u:p:c:x:P:v opt; do
         case $opt in
-            s)  host=$OPTARG ;;
-            u)  nick=$OPTARG ;;
-            p)  pass=$OPTARG ;;
-            P)  port=$OPTARG ;;
-            c)  chan=$OPTARG ;;
-            x)  comm=$OPTARG ;;
-
             \?) printf 'birch -s host -u nick -p pass -P port -c channel\n' 
                 exit 1 ;;
 
             v)  printf 'birch 0.0.1\n'
-                exit ;;
+                exit 0 ;;
 
             :)  printf 'Option -%s requires an argument.\n' "$OPTARG" >&2
-                exit 1
+                exit 1 ;;
+
+            *)  declare -g "$opt=$OPTARG" 
         esac
     done
 }
