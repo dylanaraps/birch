@@ -123,8 +123,6 @@ irc_cmd() {
           *) printf 'PRIVMSG %s %s\n' "$chan" ":$1" >&69
              irc_mesg "$1" "$nick" "$chan"
     esac
-
-    printf '\e[2K'
 }
 
 irc_output() {
@@ -218,6 +216,8 @@ main() {
     irc_output & for ((;;)) {
         read -erp "$chan (${cch:=1}/${#chans[@]}) > " && 
             irc_cmd "$REPLY"
+
+        printf '\e[2K'
     }
 }
 
