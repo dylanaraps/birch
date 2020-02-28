@@ -130,12 +130,12 @@ parse() {
     case ${fields[0]} in
         PRIVMSG) prin '%s %s\n' "$nc" "$mesg" ;;
          NOTICE) prin '%s %s\n' NOTE "$mesg" ;;
-           PING) prin 'PONG%s\n' "${1##PING}" >&69 ;;
            QUIT) prin '%s %s has quit %s\n'   \<-- "$nc" "$dest"  ;;
            PART) prin '%s %s has left %s\n'   \<-- "$nc" "$dest"  ;;
            JOIN) prin '%s %s has joined %s\n' --\> "$nc" "$dest"  ;;
            NICK) prin '%s %s is now known as %s\n' -- "$nc" "$mc" ;;
             353) chan=${fields[3]}  ;;
+           PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             366) ;;
             376) irc_cmd "${x:-:/}" ;&
               *) prin '%s %s\n' RAW "$mesg"
