@@ -21,7 +21,7 @@ term_size() {
     shopt -s checkwinsize; (:;:)
 }
 
-term_resize() {
+resize() {
     term_size
     term_setup
 
@@ -39,7 +39,7 @@ irc_setup() {
     IFS=, read -ra chans <<< "${chan:=${c:-#kisslinux}}"
 
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\nJOIN %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p:-}" "${chans[@]}" >&69
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" "${chans[@]}" >&69
 
     chan=${chans[0]}
     hist_focus
@@ -59,9 +59,9 @@ prin() {
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     case ${input:-$dest} in
-        "$chan")      printf '%s\n' "$out" >> current ;&
-        "$nick"|1|\*) printf '%s\n' "$out" ;;
-        \#*)          printf '%s\n' "$out" >> "$dest" ;;
+        "$nick"|"$chan"|1|\*) printf '%s\n' "$out" >> current
+                              printf '%s\n' "$out" ;;
+                         \#*) printf '%s\n' "$out" >> "$dest" ;;
     esac
 
     printf '\e8\e[?25h'
@@ -98,11 +98,11 @@ irc_cmd() {
 }
 
 parse() {
-    fields=() word='' from='' from_split=()
+    fields=() word='' from='' whom=''
 
     [[ "${1%% *}" == *[:@!]* ]] && {
         from=${1%% *}
-        IFS='!@' read -ra from_split <<< "${from#:}"
+        IFS='!@' read -r whom _ <<< "${from#:}"
     }
 
     while IFS= read -d '' -rn 1 c; do case $c in
@@ -111,7 +111,7 @@ parse() {
         *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
-    whom=${from_split[0]:-$nick}
+    whom=${whom:-$nick}
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     dest=${fields[1]:-$chan}
 
@@ -160,8 +160,8 @@ main() {
     irc_setup
     term_setup
 
-    trap clean       INT EXIT
-    trap term_resize WINCH
+    trap clean  INT EXIT
+    trap resize WINCH
 
     while read -sru 69; do
         parse "${REPLY%%$'\r'*}"
