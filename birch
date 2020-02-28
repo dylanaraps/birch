@@ -3,8 +3,7 @@
 # birch - a simple irc client in bash
 
 clean() {
-    irc_cmd "/quit ciao"
-    printf '\e[2J\e[;r'
+    printf '\e[2J\e[;r\e[H'
     exec 69>&-
     rm -rf -- "$temp_dir"
     kill 0
@@ -27,7 +26,7 @@ term_resize() {
     term_setup
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-    printf %s "$(< current)"
+    printf '%s\n' "$(< current)"
     printf '\e8\e[?25h'
 }
 
