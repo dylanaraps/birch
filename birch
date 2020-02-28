@@ -4,13 +4,13 @@
 
 clean() {
     term_reset
-    rm -f "$temp_dir/birch-$pid-"*
+    rm -rf -- "$temp_dir"
     kill 0
 }
 
 hist_focus() {
-    : >> "$temp_dir/birch-$pid-$chan"
-    ln -sf "$temp_dir/birch-$pid-$chan" "$temp_dir/birch-$pid--current"
+    : >> "$chan"
+    ln -sf "$chan" current
 }
 
 term_setup() {
@@ -24,8 +24,6 @@ term_reset() {
 }
 
 term_size() {
-    resize=
-
     shopt -s checkwinsize; (:;:)
 }
 
@@ -34,7 +32,7 @@ term_resize() {
     term_setup
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-    printf '%s\n' "$(< "$temp_dir/birch-$pid--current")"
+    cat current
     printf '\e8\e[?25h'
 }
 
@@ -67,14 +65,14 @@ irc_print() {
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
-        printf '%s\n' "$1" >> "$temp_dir/birch-$pid-$2"
+        printf '%s\n' "$1" >> "$2"
 
         [[ " ${channels[*]} " != *" $chan "* ]] &&
             channels+=("$chan")
 
     else
         printf '\r%s\n' "$1"
-        printf '%s\n'   "$1" >> "$temp_dir/birch-$pid--current"
+        printf '%s\n'   "$1" >> current
     fi 2>/dev/null
 
     printf '\e8\e[?25h'
@@ -97,15 +95,17 @@ irc_cmd() {
         ""|\?*) ;;
 
         /j*)
-            printf 'JOIN %s\n' "${cmd[1]}" >&69
+            printf 'JOIN %s\n'  "${cmd[1]/\\}" >&69
+            printf 'NAMES %s\n' "${cmd[1]/\\}" >&69
 
             chan=$_
-            resize=1
 
             [[ " ${channels[*]} " != *" $chan "* ]] &&
                 channels+=("$chan")
 
             hist_focus
+
+            kill -WINCH 0
         ;;
 
         /l*)
@@ -266,7 +266,9 @@ main() {
     get_args "$@"
     term_size
 
-    : > "${temp_dir:=/tmp}/birch-$pid--current"
+    mkdir -p "${temp_dir:=/tmp/birch-$pid}"
+    cd "$temp_dir" || exit 1
+    : > current
 
     irc_setup
     term_setup
