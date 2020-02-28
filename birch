@@ -266,6 +266,7 @@ main() {
     get_args "$@"
     term_size
 
+    export HISTFILE=/tmp/birch-$pid-hist
     mkdir -p "${temp_dir:=/tmp/birch-$pid}"
     cd "$temp_dir" || exit 1
     : > current
@@ -280,6 +281,7 @@ main() {
 
     for ((;;)) {
         read -erp "$chan (${cch:=0}/$((${#channels[@]}-1))) > " mesg && {
+            history -s "$mesg"
             irc_cmd "$mesg"
             printf '\e[2K'
         }
