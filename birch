@@ -42,13 +42,13 @@ irc_setup() {
         exit 1
     }
 
-    IFS=, read -ra channels <<< "${chan:=#kisslinux}"
-    chan=${channels[0]}
+    IFS=, read -ra chans <<< "${chan:=#kisslinux}"
+    chan=${chans[0]}
 
     printf 'NICK %s\n' "${nick:=$USER}" >&69
     printf 'USER %s - - :%s\n' "$nick" "$nick" >&69
     printf 'PASS %s\n' "${pass:-}" >&69
-    printf 'JOIN %s\n' "${channels[@]}" >&69
+    printf 'JOIN %s\n' "${chans[@]}" >&69
 
     hist_focus
 }
@@ -67,8 +67,8 @@ irc_print() {
     if [[ $2 == \#* && "$2" != "$chan" ]]; then
         printf '%s\n' "$1" >> "$2"
 
-        [[ " ${channels[*]} " != *" $chan "* ]] &&
-            channels+=("$chan")
+        [[ " ${chans[*]} " != *" $chan "* ]] &&
+            chans+=("$chan")
 
     else
         printf '\r%s\n' "$1"
@@ -100,8 +100,8 @@ irc_cmd() {
 
             chan=$_
 
-            [[ " ${channels[*]} " != *" $chan "* ]] &&
-                channels+=("$chan")
+            [[ " ${chans[*]} " != *" $chan "* ]] &&
+                chans+=("$chan")
 
             hist_focus
 
@@ -241,7 +241,7 @@ get_args() {
             \?) usage ;;
 
             v)
-                printf '%s\n' "$version"
+                printf 'birch 0.0.1\n'
                 exit
             ;;
 
@@ -261,15 +261,13 @@ usage() {
 
 main() {
     pid=$$
-    version='birch 0.0.1'
 
     get_args "$@"
     term_size
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$pid-hist
     mkdir -p "${temp_dir:=$TMPDIR/birch-$pid}"
-    cd "$temp_dir" || exit 1
-    : > current
+    cd "$temp_dir" > current || exit 1
 
     irc_setup
     term_setup
@@ -280,7 +278,7 @@ main() {
     irc_output &
 
     for ((;;)) {
-        read -erp "$chan (${cch:=0}/$((${#channels[@]}-1))) > " mesg && {
+        read -erp "$chan (${cch:=1}/${#chans[@]}) > " mesg && {
             history -s "$mesg"
             irc_cmd "$mesg"
             printf '\e[2K'
