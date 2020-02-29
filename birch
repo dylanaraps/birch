@@ -84,19 +84,19 @@ parse() {
           *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
-    whom=${whom:-$nick}
+    whom=${whom:-${nick}}
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     dest=${fields[1]:-$chan}
 
     [[ $mesg == *$'\001ACTION'*$'\001'* ]] &&
         fields[0]=ACTION mesg=${mesg/$'\001ACTION' }
     
-    nc=$'\e[1;3'$((${#whom}/2))m$whom$'\e[m'
-    mc=$'\e[1;3'$((${#mesg}/2))m$mesg$'\e[m'
-    dc=$'\e[1;3'$((${#dest}/2))m$dest$'\e[m'
+    nc=$'\e[1;3'$((${#whom}%6+1))m$whom$'\e[m'
+    mc=$'\e[1;3'$((${#mesg}%6+1))m$mesg$'\e[m'
+    dc=$'\e[1;3'$((${#dest}%6+1))m$dest$'\e[m'
 
     case ${fields[0]} in
-        PRIVMSG) prin "$nc $mesg" ;;
+        PRIVMSG) prin "${nc/$whom/${whom:0:10}} $mesg" ;;
          ACTION) prin "* $nc ${mesg/$'\001'}" ;;
          NOTICE) prin "NOTE $mesg" ;;
            QUIT) prin "<-- $nc has quit" ;;
