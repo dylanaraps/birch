@@ -69,6 +69,8 @@ cmd() {
                /*) send "NOTICE :${cmd[0]} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
     esac
+
+    printf '\e[2K'
 }
 
 parse() {
@@ -91,13 +93,14 @@ parse() {
 
     nc=$'\e[1;3'$((${#whom}/2))m$whom$'\e[m'
     mc=$'\e[1;3'$((${#mesg}/2))m$mesg$'\e[m'
+    dc=$'\e[1;3'$((${#dest}/2))m$dest$'\e[m'
 
     case ${fields[0]} in
         PRIVMSG) prin "$nc $mesg" ;;
          NOTICE) prin "NOTE $mesg" ;;
-           QUIT) prin "<-- $nc has quit $dest" ;;
-           PART) prin "<-- $nc has left $dest" ;; 
-           JOIN) prin "--> $nc has joined $dest" ;;
+           QUIT) prin "<-- $nc has quit $dc" ;;
+           PART) prin "<-- $nc has left $dc" ;; 
+           JOIN) prin "--> $nc has joined $dc" ;;
            NICK) prin "$nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             376) cmd  "${x:-:/}" ;;
@@ -121,7 +124,7 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap 'resize=1' WINCH
+    trap 'resize=1'  WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
@@ -129,13 +132,11 @@ main() {
     done &
     
     while :; do
-        read -erp "$chan > " && {
+        read -erp "$chan > " &&
             cmd "$REPLY"
-            printf '\e[2K'
-        }
 
         [[ $resize ]] && resize
     done
 }
 
-main "$@" ||:
+main "$@"
