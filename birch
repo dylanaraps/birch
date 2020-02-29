@@ -133,8 +133,8 @@ main() {
         parse "${REPLY%%$'\r'*}" 
     done &
     
-    while read -erp "$chan > " </dev/tty; do
-         cmd "$REPLY"
+    while read -erp "$chan > "; do
+        cmd "$REPLY"
     done
 }
 
