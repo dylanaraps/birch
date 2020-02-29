@@ -18,7 +18,7 @@ resize() {
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
-    fold -sw "$((COLUMNS - 20))" "${TMPDIR:-/tmp}/birch-$$" |
+    fold -sw "$((COLUMNS-20))" "${TMPDIR:-/tmp}/birch-$$" |
         sed -e '2,$s|^|            |g'
 
     printf '\e8\e[?25h'
@@ -48,7 +48,7 @@ prin() {
 
     printf '\e[?25l\e7\e[%sH%s\n\e8\e[?25h' \
         "$((LINES-1))" "$out" | 
-        fold -sw "$((COLUMNS - 20))" |
+        fold -sw "$((COLUMNS-20))" |
         sed -e '2,$s|^|            |g'
 
     printf '\r%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
@@ -124,7 +124,7 @@ main() {
     trap 'cmd /quit' INT
 
     while read -sru 69; do
-        parse "${REPLY%%$'\r'*}"
+        parse "${REPLY%%$'\r'*}" 
     done &
     
     while :; do
