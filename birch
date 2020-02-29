@@ -129,9 +129,10 @@ main() {
     done &
     
     while :; do
-        read -erp "$chan > " || continue
-        cmd "$REPLY"
-        printf '\e[2K'
+        read -erp "$chan > " && {
+            cmd "$REPLY"
+            printf '\e[2K'
+        }
 
         [[ $resize ]] && resize
     done
