@@ -98,12 +98,13 @@ parse() {
     case ${fields[0]} in
         PRIVMSG) prin "$nc $mesg" ;;
          NOTICE) prin "NOTE $mesg" ;;
-           QUIT) prin "<-- $nc has quit $dc" ;;
+           QUIT) prin "<-- $nc has quit" ;;
            PART) prin "<-- $nc has left $dc" ;; 
            JOIN) prin "--> $nc has joined $dc" ;;
            NICK) prin "$nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             376) cmd  "${x:-:/}" ;;
+        ?[0-9]?) prin "${fields[0]} $mesg" ;;
               *) prin "RAW $mesg"  ;;
     esac
 }
