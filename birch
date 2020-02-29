@@ -127,7 +127,7 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap 'resize; printf "%s\n\e[10C" "$chan > "' WINCH
+    trap 'resize; printf "%s\n\e[%sC" "$chan > " "$((${#chan}+3))"' WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
