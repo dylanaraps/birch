@@ -9,18 +9,17 @@ clean() {
 }
 
 refresh() {
-    shopt -s checkwinsize; (:;:)
-    printf '\e[2J\e[1;%sr\e[999H' "$((LINES-1))"
-    resize=
+    read -r h w < <(stty size)
+    printf '\e[2J\e[1;%sr\e[999H' "$((h-1))"
 }
 
 resize() {
     refresh
 
-    printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
+    printf '\e7\e[?25l\r\e[999B\e[A'
 
-    fold -sw "$((COLUMNS-12))" "${TMPDIR:-/tmp}/birch-$$" |
-        sed -e '2,$s|^|            |g'
+    fold -sw "$((w-12))" "${TMPDIR:-/tmp}/birch-$$" |
+        sed '2,$s|^|            |g'
 
     printf '\e8\e[?25h'
 }
@@ -47,10 +46,8 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
-    printf '\e[?25l\e7\e[%sH%s\n\e8\e[?25h' \
-        "$((LINES-1))" "$out" | 
-        fold -sw "$((COLUMNS-12))" |
-        sed -e '2,$s|^|            |g'
+    printf '\e[?25l\e7\r\e[999B\e[A%s\n\e8\e[?25h' "$out" | 
+        fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
     printf '\r%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
 }
@@ -107,7 +104,7 @@ parse() {
            JOIN) prin "--> $nc has joined $dc" ;;
            NICK) prin "$nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
-            376) cmd  "${x:-:/}" ;;
+            376) cmd  "${x:-}" ;;
         ?[0-9]?) prin "${fields[0]} $mesg" ;;
               *) prin "RAW $mesg"  ;;
     esac
@@ -129,17 +126,15 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap 'resize=1'  WINCH
+    trap 'resize; printf "%s\n\e[10C" "$chan > " >/dev/tty' WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
         parse "${REPLY%%$'\r'*}" 
     done &
     
-    while :; do
-        read -erp "$chan > " && cmd "$REPLY"
-
-        [[ $resize ]] && resize
+    while read -erp "$chan > " </dev/tty; do
+         cmd "$REPLY"
     done
 }
 
