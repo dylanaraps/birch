@@ -14,8 +14,6 @@ refresh() {
 }
 
 resize() {
-    refresh
-
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     fold -sw "$((COLUMNS-20))" "${TMPDIR:-/tmp}/birch-$$" |
@@ -120,7 +118,7 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap resize WINCH
+    trap 'refresh; resize' WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
