@@ -21,7 +21,7 @@ resize() {
     fold -sw "$((w-12))" "${TMPDIR:-/tmp}/birch-$$" |
         sed '2,$s|^|            |g'
 
-    printf '\e8\e[?25h'
+    printf '\e8\e[?25h%s\n\e[%sC' "$chan > " "$((${#chan}+3))"
 }
 
 connect() {
@@ -127,7 +127,7 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap 'resize; printf "%s\n\e[%sC" "$chan > " "$((${#chan}+3))"' WINCH
+    trap resize WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
