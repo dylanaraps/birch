@@ -67,7 +67,7 @@ irc_cmd() {
     case $1 in ""|?/*) ;;
         '/nick '*) send "NICK ${cmd[1]}"; nick=${cmd[1]} ;;
          '/msg '*) send "PRIVMSG ${cmd[1]} :${cmd[*]:2}" ;;
-          '/me '*) send "PRIVMSG $chan :\\001ACTION ${cmd[*]:1}\\001" ;;
+          '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION ${cmd[*]:1}"$'\001' ;;
          '/quit'*) send "QUIT :${cmd[1]}"; clean ;;
                /*) send "NOTICE :${cmd[0]} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
