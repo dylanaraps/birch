@@ -61,7 +61,7 @@ cmd() {
 
     send() { parse "$1"; printf '%s\n' "$1" >&69; }
 
-    case $1 in ""|?/*) ;;
+    case $1 in ""|?/?*) ;;
         '/nick '*) send "NICK ${cmd[1]}"; nick=${cmd[1]} ;;
          '/msg '*) send "PRIVMSG ${cmd[1]} :${cmd[*]:2}" ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION ${cmd[*]:1}"$'\001' ;;
