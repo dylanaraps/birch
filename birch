@@ -21,7 +21,10 @@ resize() {
     term_setup
 
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
-    printf '%s\n' "$(< "${TMPDIR:-/tmp}/birch-$$")"
+
+    fold -sw "$((COLUMNS - 20))" "${TMPDIR:-/tmp}/birch-$$" |
+        sed -e '2,$s|^|            |g'
+
     printf '\e8\e[?25h'
 }
 
@@ -44,16 +47,15 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
-    out=$(fold -sw 70 <<< "$out")
-    out=${out//$'\n'/$'\n'            }
-
     [[ $dest == \#* || $dest == \* || $dest == "$nick" ]] ||
         return
 
     printf '\e[?25l\e7\e[%sH%s\n\e8\e[?25h' \
-        "$((LINES-1))" "$out"
+        "$((LINES-1))" "$out" | 
+        fold -sw "$((COLUMNS - 20))" |
+        sed -e '2,$s|^|            |g'
 
-    printf '%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
+    printf '\r%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
 }
 
 irc_cmd() {
