@@ -11,9 +11,12 @@ clean() {
 refresh() {
     shopt -s checkwinsize; (:;:)
     printf '\e[2J\e[1;%sr\e[999H' "$((LINES-1))"
+    resize=
 }
 
 resize() {
+    refresh
+
     printf '\e[?25l\e7\e[%sH' "$((LINES-1))"
 
     fold -sw "$((COLUMNS-20))" "${TMPDIR:-/tmp}/birch-$$" |
@@ -118,7 +121,7 @@ main() {
 
     export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
 
-    trap 'refresh; resize' WINCH
+    trap 'resize=1' WINCH
     trap 'cmd /quit' INT
 
     while read -sru 69; do
@@ -129,6 +132,8 @@ main() {
         read -erp "$chan > " || continue
         cmd "$REPLY"
         printf '\e[2K'
+
+        [[ $resize ]] && resize
     done
 }
 
