@@ -10,7 +10,7 @@ comes first.
 ## Usage
 
 ```sh
-use: birch [-s host -u nick -p pass -P port -c chan]
+birch [-s host -u nick -p pass -P port -c chan -x cmd]
 ```
 
 ## Dependencies

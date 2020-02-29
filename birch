@@ -104,7 +104,7 @@ parse() {
 
 args() {
     while getopts :s:u:p:c:x:P:v opt; do case $opt in
-        \?) printf 'use: birch [-s host -u nick -p pass -P port -c chan]\n' ;;
+        \?) printf 'birch [-s host -u nick -p pass -P port -c chan -x cmd]\n' ;;
          v) printf 'birch 0.0.1\n' ;;
          :) printf 'Option -%s requires an argument\n' "$OPTARG" >&2 ;;
          *) declare -g "$opt=$OPTARG" 
