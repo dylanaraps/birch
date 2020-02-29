@@ -3,14 +3,14 @@
 # birch - a simple irc client in bash
 
 clean() {
-    printf '\e[2J\e[;r\e[H'
+    printf '\e[?7h\e[2J\e[;r\e[H'
     rm -f -- "${TMPDIR:-/tmp}/birch-$$"*
     kill 0
 }
 
 refresh() {
     read -r h w < <(stty size)
-    printf '\e[2J\e[1;%sr\e[999H' "$((h-1))"
+    printf '\e[?7l\e[2J\e[1;%sr\e[999H' "$((h-1))"
 }
 
 resize() {
