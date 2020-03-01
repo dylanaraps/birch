@@ -10,18 +10,26 @@ clean() {
 
 refresh() {
     read -r h w < <(stty size)
-    printf '\e[?1049h\e[?7l\e[2J\e[1;%sr\e[999H' "$((h-1))"
+    printf '\e[?1049h\e[?7l\e[2J\e[2;%sr\e[999H' "$((h-1))"
 }
 
 resize() {
     refresh
+    status
 
     printf '\e7\e[?25l\r\e[999B\e[A'
 
     fold -sw "$((w-12))" .current |
         sed '2,$s|^|            |g'
 
-    printf '\e8\e[?25h%s\n\e[%sC' "$chan > " "$((${#chan}+3))"
+    printf '\e8\e[?25h> \n\e[2C'
+}
+
+status() {
+    chans=(*)
+
+    printf '\e7\e[H%b\e8' \
+        "${chans[*]/"$chan"/$'\e[7m'"$chan"$'\e[m'}"
 }
 
 connect() {
@@ -44,9 +52,8 @@ prin() {
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
     [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B%s\e8\e[?25h' \
-            "$out" "$chan > " | 
-            fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B> \e8\e[?25h' \
+            "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
     printf '\r%s\n' "$out" >> "$dest"
 }
@@ -131,7 +138,7 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    : > .current
+    : > .current > "$chan" > \* > "$nick"
     declare -A nl
 
     export HISTFILE=$tmp/hist
@@ -143,7 +150,7 @@ main() {
         parse "${REPLY%%$'\r'*}" 
     done &
     
-    while read -erp "$chan > "; do
+    while status && read -erp "> "; do
         cmd "$REPLY"
     done
 }
