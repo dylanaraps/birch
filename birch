@@ -60,7 +60,7 @@ prin() {
 
 cmd() {
     history -s "$1"
-    read -r _ a args <<< "$1"
+    read -r _ a args <<< "${1//\\\#/\#}"
 
     send() { parse "$1"; printf '%s\n' "$1" >&69; }
 
