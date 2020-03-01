@@ -129,7 +129,7 @@ main() {
     refresh
     connect
 
-    mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch}"
+    mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
     : > .current
     declare -A nl
