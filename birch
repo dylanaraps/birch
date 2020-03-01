@@ -4,7 +4,7 @@
 
 clean() {
     printf '\e[?7h\e[2J\e[;r\e[H\e[?1049l'
-    rm -f -- "${TMPDIR:-/tmp}/birch-$$"*
+    rm -rf -- "$tmp"
     kill 0
 }
 
@@ -18,7 +18,7 @@ resize() {
 
     printf '\e7\e[?25l\r\e[999B\e[A'
 
-    fold -sw "$((w-12))" "${TMPDIR:-/tmp}/birch-$$" |
+    fold -sw "$((w-12))" .current |
         sed '2,$s|^|            |g'
 
     printf '\e8\e[?25h%s\n\e[%sC' "$chan > " "$((${#chan}+3))"
@@ -50,7 +50,7 @@ prin() {
         "$out" "$chan > " | 
         fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
-    printf '\r%s\n' "$out" >> "${TMPDIR:-/tmp}/birch-$$"
+    printf '\r%s\n' "$out" >> .current
 }
 
 cmd() {
@@ -93,11 +93,12 @@ parse() {
         fields[0]=ACTION mesg=${mesg/$'\001ACTION' }
     
     nc=$'\e[1;3'$((${#whom}%6+1))m$whom$'\e[m'
+    me=$'\e[1;3'$((${#nick}%6+1))m$nick$'\e[m'
     mc=$'\e[1;3'$((${#mesg}%6+1))m$mesg$'\e[m'
     dc=$'\e[1;3'$((${#dest}%6+1))m$dest$'\e[m'
 
     case ${fields[0]} in
-        PRIVMSG) prin "${nc/$whom/${whom:0:10}} $mesg" ;;
+        PRIVMSG) prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" ;;
          ACTION) prin "* $nc ${mesg/$'\001'}" ;;
          NOTICE) prin "NOTE $mesg" ;;
            QUIT) prin "<-- $nc has quit" ;;
@@ -125,7 +126,11 @@ main() {
     refresh
     connect
 
-    export HISTFILE=${TMPDIR:=/tmp}/birch-$$-hist
+    mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch}"
+    cd "$tmp" || exit 1
+    : > .current
+
+    export HISTFILE=$tmp/hist
 
     trap resize WINCH
     trap 'cmd /quit' INT
