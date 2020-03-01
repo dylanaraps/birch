@@ -22,7 +22,7 @@ resize() {
     fold -sw "$((w-12))" .current |
         sed '2,$s|^|            |g'
 
-    printf '\e8\e[?25h> \n\e[2C'
+    printf '\e[999H\e[?25h> '
 }
 
 status() {
@@ -76,7 +76,7 @@ cmd() {
                 *) send "PRIVMSG $chan :$1" ;;
     esac
 
-    printf '\e[2K'
+    printf '\r\e[2K\r'
 }
 
 parse() {
