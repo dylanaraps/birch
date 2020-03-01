@@ -68,6 +68,7 @@ cmd() {
                    ln -sf "$chan" .c; kill -28 0 ;;
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
+         '/raw '*) send "$a $args" ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
          '/part'*) send "PART ${a:=$chan}"; sleep 1; rm -f "$a" ;;
          '/quit'*) send "QUIT :$a"; clean ;;
