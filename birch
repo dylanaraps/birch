@@ -53,16 +53,18 @@ prin() {
 
 cmd() {
     history -s "$1"
-    read -ra cmd <<< "$1"
+    read -r _ a args <<< "$1"
 
     send() { parse "$1"; printf '%s\n' "$1" >&69; }
 
     case $1 in ""|?/?*) ;;
-        '/nick '*) send "NICK ${cmd[1]}"; nick=${cmd[1]} ;;
-         '/msg '*) send "PRIVMSG ${cmd[1]} :${cmd[*]:2}" ;;
-          '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION ${cmd[*]:1}"$'\001' ;;
-         '/quit'*) send "QUIT :${cmd[1]}"; clean ;;
-               /*) send "NOTICE :${cmd[0]} not implemented yet" ;;
+        '/join '*) chan=$a; send "JOIN $a"; send "NICKS $a"
+                   ln -sf "$chan" .current; kill -28 0 ;;
+        '/nick '*) send "NICK $a"; nick=$a ;;
+         '/msg '*) send "PRIVMSG $a :$args" ;;
+          '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
+         '/quit'*) send "QUIT :$a"; clean ;;
+               /*) send "NOTICE :${1/ *} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
     esac
 
