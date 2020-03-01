@@ -63,6 +63,7 @@ cmd() {
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
+         '/part'*) send "PART ${a:-$chan}" ;;
          '/quit'*) send "QUIT :$a"; clean ;;
                /*) send "NOTICE :${1/ *} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
