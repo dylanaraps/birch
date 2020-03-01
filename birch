@@ -101,7 +101,8 @@ parse() {
          NOTICE) prin "NOTE $mesg" ;;
            QUIT) prin "<-- $nc has quit" ;;
            PART) prin "<-- $nc has left $dc" ;; 
-           JOIN) prin "--> $nc has joined $dc" ;;
+           JOIN) [[ $whom == "$nick" ]] && chan=$mesg
+                 prin "--> $nc has joined $dc" ;;
            NICK) prin "$nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             376) cmd  "${x:-}" ;;
