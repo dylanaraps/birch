@@ -50,11 +50,11 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
-    [[ $dest == "$chan" ]] &&
+    [[ $dest == "$chan" || $dest == "$nick" ]] &&
         printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B> \e8\e[?25h' \
             "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
-    printf '\r%s\n' "$out" >> "$dest"
+    printf '\r%s\n' "$out" >> "${dest//$nick/$chan}"
 }
 
 cmd() {
@@ -64,7 +64,7 @@ cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&69; }
 
     case $1 in ""|?/?*) ;;
-        '/join '*) chan=$a; send "JOIN $a"; send "NICKS $a"
+        '/join '*) chan=$a; [[ -f $a ]] || send "JOIN $a"; send "NICKS $a"
                    ln -sf "$chan" .c; kill -28 0 ;;
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
@@ -140,7 +140,7 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    ln -s "$chan" .c > "./$chan" > \* > "$nick"
+    ln -s "$chan" .c > "./$chan" > \*
     declare -A nl
 
     bind -x '"\C-n":cmd "/next"' &>/dev/null
