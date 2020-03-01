@@ -138,7 +138,7 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    : > .current > "$chan" > \* > "$nick"
+    ln -s "$chan" .current > "./$chan" > \* > "$nick"
     declare -A nl
 
     export HISTFILE=$tmp/hist
