@@ -10,7 +10,7 @@ clean() {
 
 refresh() {
     read -r h w < <(stty size)
-    printf '\e[?1049h\e[?7l\e[2J\e[2;%sr\e[999H' "$((h-1))"
+    printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((h-1))"
 }
 
 resize() {
@@ -19,17 +19,16 @@ resize() {
 
     printf '\e7\e[?25l\r\e[999B\e[A'
 
-    fold -sw "$((w-12))" .current |
-        sed '2,$s|^|            |g'
+    fold -sw "$((w-12))" .c | sed '2,$s|^|            |g'
 
     printf '\e[999H\e[?25h> '
 }
 
 status() {
-    chans=(*)
+    cl=(*)
 
-    printf '\e7\e[H%b\e8' \
-        "${chans[*]/"$chan"/$'\e[7m'"$chan"$'\e[m'}"
+    printf '\e7\e[H\e[K%b\e8' \
+        "${cl[*]/"$chan"/$'\e[7m'"$chan"$'\e[m'}"
 }
 
 connect() {
@@ -66,12 +65,14 @@ cmd() {
 
     case $1 in ""|?/?*) ;;
         '/join '*) chan=$a; send "JOIN $a"; send "NICKS $a"
-                   ln -sf "$chan" .current; kill -28 0 ;;
+                   ln -sf "$chan" .c; kill -28 0 ;;
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
-         '/part'*) send "PART ${a:-$chan}" ;;
+         '/part'*) send "PART ${a:=$chan}"; sleep 1; rm -f "$a" ;;
          '/quit'*) send "QUIT :$a"; clean ;;
+         '/next'*) chan=${cl[z=z+1>=${#cl[@]}?0:z+1]}; 
+                   ln -sf "$chan" .c; kill -28 0 ;;
                /*) send "NOTICE :${1/ *} not implemented yet" ;;
                 *) send "PRIVMSG $chan :$1" ;;
     esac
@@ -138,8 +139,10 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    ln -s "$chan" .current > "./$chan" > \* > "$nick"
+    ln -s "$chan" .c > "./$chan" > \* > "$nick"
     declare -A nl
+
+    bind -x '"\C-n":cmd "/next"' &>/dev/null
 
     export HISTFILE=$tmp/hist
 
