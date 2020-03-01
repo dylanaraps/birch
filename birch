@@ -13,14 +13,16 @@ refresh() {
     printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((h-1))"
 }
 
+wrap() {
+    fold -sw "$((w-12))" .c | sed 's/^[^ ]/            \0/g'
+}
+
 resize() {
     refresh
     status
 
     printf '\e7\e[?25l\r\e[999B\e[A'
-
-    fold -sw "$((w-12))" .c | sed '2,$s|^|            |g'
-
+    wrap < .c
     printf '\e[999H\e[?25h> '
 }
 
@@ -47,12 +49,12 @@ prin() {
     raw=${raw//$'\e[1;3'?m} 
     raw=${raw//$'\e[m'}
 
-    printf -v out '\e[%sC%s' \
-        "$((${#raw}>10?0:11-${#raw}))" "$1"
+    printf -v out '%*s%s' \
+        "$((${#raw}>10?0:11-${#raw}))" "" "$1"
 
     [[ $dest == "$chan" || $dest == "$nick" ]] &&
         printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B> \e8\e[?25h' \
-            "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+            "$out" | wrap
 
     printf '\r%s\n' "$out" >> "${dest//$nick/$chan}"
 }
@@ -95,7 +97,7 @@ parse() {
           *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
-    whom=${whom:-${nick}}
+    whom=${whom:-$nick}
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     dest=${fields[1]:-$chan}
 
