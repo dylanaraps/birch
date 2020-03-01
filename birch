@@ -36,9 +36,6 @@ connect() {
 }
 
 prin() {
-    [[ $dest == \#* || $dest == \* || $dest == "$nick" ]] ||
-        return
-
     raw=${1%% *}
     raw=${raw//$'\e[1;3'?m} 
     raw=${raw//$'\e[m'}
@@ -46,11 +43,12 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
-    printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B%s\e8\e[?25h' \
-        "$out" "$chan > " | 
-        fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+    [[ $dest == "$chan" ]] &&
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B%s\e8\e[?25h' \
+            "$out" "$chan > " | 
+            fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
-    printf '\r%s\n' "$out" >> .current
+    printf '\r%s\n' "$out" >> "$dest"
 }
 
 cmd() {
