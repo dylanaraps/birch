@@ -198,14 +198,17 @@ parse() {
           *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
+    mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
+
     # If the field after the typical dest is a channel, use
     # it in place of the regular field. This correctly
     # catches MOTD and join messages.
-    [[ ${fields[2]} == \#* ]] && fields[1]=${fields[2]}
-    [[ ${fields[2]} == =   ]] && fields[1]=${fields[3]}
+    case ${fields[2]} in
+        \#*|\*) fields[1]=${fields[2]} ;;
+             =) fields[1]=${fields[3]} ;;
+    esac
 
     whom=${whom:-$nick}
-    mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     dest=${fields[1]:-"$(readlink .c || printf %s "$chan")"}
 
     # If the message itself contains ACTION with surrounding
