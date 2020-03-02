@@ -112,7 +112,8 @@ parse() {
         PRIVMSG) prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" ;;
          ACTION) prin "* $nc ${mesg/$'\001'}" ;;
          NOTICE) prin "NOTE $mesg" ;;
-           QUIT) [[ ${nl[chan]} == *" $whom "* ]] && prin "<-- $nc has quit" ;;
+           QUIT) [[ ${nl[chan]} == *" $whom "* ]] && 
+                 prin "<-- $nc has quit ${dc//$dest/$chan}" ;;
            PART) prin "<-- $nc has left $dc" ;; 
            JOIN) [[ $whom == "$nick" ]] && chan=$mesg
                  prin "--> $nc has joined $dc" ;;
