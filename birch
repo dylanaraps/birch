@@ -26,7 +26,7 @@ status() {
     cl=(*) cL=" ${cl[*]} "
 
     printf '\e7\e[H\e[K%b\e8' \
-        "${cL/" $chan "/$'\e[7m'" $chan "$'\e[m'}"
+        "${cL/" $chan "/ $'\e[7m'"$chan"$'\e[m' }"
 }
 
 connect() {
