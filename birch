@@ -114,6 +114,10 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
+    # Grab the current channel a second time to ensure it
+    # didn't change during the printing process.
+    chan=$(readlink .c || printf %s "$chan")
+
     # Only display to the terminal if the message destination
     # matches the currently focused buffer.
     #
