@@ -157,20 +157,56 @@ cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
-        '/join '*) chan=$a; ln -sf "$chan" .c; [[ -f $a ]] || 
-                   printf ':%s JOIN %s\n' "$nick" "$a" >&9
-                   kill -28 0 ;;
-        '/nick '*) printf 'NICK %s\n' "$a" >&9; nick=$a ;;
-        '/eval '*) eval "cmd \"$(${1#/eval })\"" ;;
-         '/msg '*) send "PRIVMSG $a :$args" ;;
-         '/raw '*) printf '%s\n' "$a $args" >&9 ;;
-          '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
-         '/part'*) send "PART ${a:=$chan}"; sleep 1; rm -f "$a" ;;
-         '/quit'*) send "QUIT :$a"; clean ;;
-         '/next'*) chan=${cl[z=z+1>=${#cl[@]}?0:z+1]}; 
-                   ln -sf "$chan" .c; kill -28 0 ;;
-               /*) send "NOTICE :${1/ *} not implemented yet" ;;
-                *) send "PRIVMSG $chan :$1" ;;
+        '/join '*) 
+            chan=$a
+            ln -sf "$chan" .c
+
+            [[ -f $a ]] || printf ':%s JOIN %s\n' "$nick" "$a" >&9
+
+            kill -28 0 
+        ;;
+
+        '/nick '*) 
+            printf 'NICK %s\n' "$a" >&9
+            nick=$a 
+        ;;
+
+        '/msg '*) 
+            send "PRIVMSG $a :$args" 
+        ;;
+
+        '/raw '*) 
+            printf '%s\n' "$a $args" >&9 
+        ;;
+
+        '/me '*) 
+            send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' 
+        ;;
+
+        '/part'*) 
+            printf 'PART %s\n' "${a:=$chan}" >&9
+            sleep 1
+            rm -f "$a"
+        ;;
+
+        '/quit'*) 
+            send "QUIT :$a $args"
+            clean 
+         ;;
+
+        '/next'*) 
+            chan=${cl[z = z + 1 >= ${#cl[@]} ? 0 : z + 1]} 
+            ln -sf "$chan" .c
+            kill -28 0 
+        ;;
+
+        /*) 
+            send "NOTICE :${1/ *} not implemented yet" 
+        ;;
+
+        *) 
+            send "PRIVMSG $chan :$1" 
+        ;;
     esac
 
     # Clear the input line once we're done.
@@ -231,21 +267,63 @@ parse() {
     # The first element in the fields array points to the
     # type of message we're dealing with.
     case ${fields[0]} in
-        PRIVMSG) prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" ;;
-         ACTION) prin "* $nc ${mesg/$'\001'}" ;;
-         NOTICE) prin "NOTE $mesg" ;;
-           QUIT) rm -f "@$whom"; [[ ${nl[chan]} == *" $whom "* ]] && 
-                 prin "<-- $nc has quit ${dc//$dest/$chan}" ;;
-           PART) rm -f "@$whom"; prin "<-- $nc has left $dc" ;; 
-           JOIN) [[ $whom == "$nick" ]] && chan=$mesg; touch "@$whom"
-                 dest=$mesg; prin "--> $nc has joined $mc" ;;
-           NICK) prin "--@ $nc is now known as $mc" ;; 
-           PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
- 00?|2[56]?|37?) dest=\* ;;&
-            376) cmd  "${x:-}" ;;&
-            353) read -ra ns <<< "$mesg"; nl[chan]=" $mesg " 
-                 touch "${ns[@]/#/@}" ;;&
-              *) prin "-- $mesg"  ;;
+        PRIVMSG) 
+            prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" 
+        ;;
+
+        ACTION) 
+            prin "* $nc ${mesg/$'\001'}" 
+        ;;
+
+        NOTICE) 
+            prin "NOTE $mesg" 
+        ;;
+
+        QUIT) 
+            rm -f "@$whom"
+
+            [[ ${nl[chan]} == *" $whom "* ]] && 
+                 prin "<-- $nc has quit ${dc//$dest/$chan}" 
+        ;;
+
+        PART) 
+            rm -f "@$whom"
+            prin "<-- $nc has left $dc" 
+        ;; 
+
+        JOIN) 
+            [[ $whom == "$nick" ]] && chan=$mesg
+
+            touch "@$whom"
+            dest=$mesg
+            prin "--> $nc has joined $mc" 
+        ;;
+
+        NICK) 
+            prin "--@ $nc is now known as $mc" 
+        ;; 
+
+        PING) 
+            printf 'PONG%s\n' "${1##PING}" >&9 
+        ;;
+
+        00?|2[56]?|37?) 
+            dest=\* 
+        ;;&
+
+        376) 
+            cmd  "${x:-}" 
+        ;;&
+
+        353) 
+            read -ra ns <<< "$mesg"
+            nl[chan]=" $mesg " 
+            touch "${ns[@]/#/@}" 
+        ;;&
+              
+        *) 
+            prin "-- $mesg"  
+        ;;
     esac
 }
 
