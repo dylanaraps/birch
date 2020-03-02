@@ -122,7 +122,7 @@ parse() {
            PART) prin "<-- $nc has left $dc" ;; 
            JOIN) [[ $whom == "$nick" ]] && chan=$mesg
                  prin "--> $nc has joined $dc" ;;
-           NICK) prin "$nc is now known as $mc" ;; 
+           NICK) prin "--@ $nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
             376) cmd  "${x:-}" ;;&
             353) nl[chan]=" $mesg " ;;&
