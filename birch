@@ -30,19 +30,17 @@ status() {
 }
 
 connect() {
-    exec 69<>"/dev/tcp/${s:=irc.freenode.net}/${P:-6667}" || {
-        printf '%s\n' "error: Couldn't connect to $s." >&2
+    exec 9<>"/dev/tcp/${s:=irc.freenode.net}/${P:-6667}" ||
         exit 1
-    }
 
     IFS=, read -ra channels <<< "${c:=#kisslinux}"
     chan=${channels[0]}
 
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&69
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&9
 
     printf 'JOIN %s\n' \
-        "${channels[@]}" >&69
+        "${channels[@]}" >&9
 }
 
 prin() {
@@ -67,14 +65,14 @@ cmd() {
     history -s "$1"
     read -r _ a args <<< "${1//\\\#/\#}"
 
-    send() { parse "$1"; printf '%s\n' "$1" >&69; }
+    send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
         '/join '*) chan=$a; [[ -f $a ]] || send "JOIN $a"; send "NICKS $a"
                    ln -sf "$chan" .c; kill -28 0 ;;
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
-         '/raw '*) printf '%s\n' "$a $args" >&69 ;;
+         '/raw '*) printf '%s\n' "$a $args" >&9 ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
          '/part'*) send "PART ${a:=$chan}"; sleep 1; rm -f "$a" ;;
          '/quit'*) send "QUIT :$a"; clean ;;
@@ -123,7 +121,7 @@ parse() {
            JOIN) [[ $whom == "$nick" ]] && chan=$mesg
                  prin "--> $nc has joined $dc" ;;
            NICK) prin "--@ $nc is now known as $mc" ;; 
-           PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
+           PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
             376) cmd  "${x:-}" ;;&
             353) nl[chan]=" $mesg " ;;&
               *) prin "-- $mesg"  ;;
@@ -157,7 +155,7 @@ main() {
     trap resize WINCH
     trap 'cmd /quit' INT
 
-    while read -sru 69; do
+    while read -sru 9; do
         parse "${REPLY%%$'\r'*}" 
     done &
     
