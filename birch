@@ -18,7 +18,7 @@ resize() {
     status
 
     printf '\e7\e[?25l\r\e[999B\e[A'
-    fold -sw "$((w-12))" .c | sed '2,$s|^|            |g'
+    tail "-$h" .c | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
     printf '\e[999H\e[?25h'
 }
 
