@@ -58,7 +58,7 @@ resize() {
     #
     # 'sed':  Add 12 characters of leading white-space
     #         to properly wrap past the nick column.
-    tail "-$h" .c | 
+    tail "-$h" .c 2>/dev/null | 
     fold -sw "$((w-12))" | 
     sed '2,$s|^|            |g'
 
@@ -112,11 +112,6 @@ prin() {
     # width of '10' so it's simply '10 - word_len'.
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
-
-    # Lazy splitting or non-splitting of server messages.
-    # Let's just print them to the current buffer.
-    [[ $dest == "$nick" || $dest == \* ]] && 
-        dest=$chan
 
     # Only display to the terminal if the message destination
     # matches the currently focused buffer.
@@ -179,6 +174,8 @@ cmd() {
 parse() {
     fields=() word='' from='' whom=''
 
+    echo "$1" >> ~/raws
+
     # If the first "word" in the raw IRC message contains
     # ':', '@' or '!', split it and grab the sending user
     # nick.
@@ -200,9 +197,15 @@ parse() {
           *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
+    # If the field after the typical dest is a channel, use
+    # it in place of the regular field. This correctly
+    # catches MOTD and join messages.
+    [[ ${fields[2]} == \#* ]] && fields[1]=${fields[2]}
+    [[ ${fields[2]} == =   ]] && fields[1]=${fields[3]}
+
     whom=${whom:-$nick}
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
-    dest=${fields[1]:-$chan}
+    dest=${fields[1]:-$(readlink .c || printf %s "$chan")}
 
     # If the message itself contains ACTION with surrounding
     # '\001', we're dealing with '/me'. Simply set the type
