@@ -174,8 +174,7 @@ cmd() {
 
 parse() {
     fields=() word='' from='' whom=''
-
-    echo "$1" >> ~/raws
+    chan=$(readlink .c || printf %s "$chan")
 
     # If the first "word" in the raw IRC message contains
     # ':', '@' or '!', split it and grab the sending user
@@ -209,7 +208,7 @@ parse() {
     esac
 
     whom=${whom:-$nick}
-    dest=${fields[1]:-"$(readlink .c || printf %s "$chan")"}
+    dest=${fields[1]:-$chan}
 
     # If the message itself contains ACTION with surrounding
     # '\001', we're dealing with '/me'. Simply set the type
