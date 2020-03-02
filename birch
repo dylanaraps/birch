@@ -364,6 +364,7 @@ main() {
     bind 'TAB:menu-complete' &>/dev/null
     bind 'set match-hidden-files off' &>/dev/null
     bind 'set horizontal-scroll-mode on' &>/dev/null
+    bind 'set enable-bracketed-paste on' &>/dev/null
 
     # Set readline's history file so that we can manage
     # its history ourselves. This should be moved to a 
