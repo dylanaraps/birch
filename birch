@@ -13,17 +13,13 @@ refresh() {
     printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((h-1))"
 }
 
-wrap() {
-    fold -sw "$((w-12))" .c | sed '2,$s|^|            |g'
-}
-
 resize() {
     refresh
     status
 
     printf '\e7\e[?25l\r\e[999B\e[A'
-    wrap < .c
-    printf '\e[999H\e[?25h> '
+    fold -sw "$((w-12))" .c | sed '2,$s|^|            |g'
+    printf '\e[999H\e[?25h'
 }
 
 status() {
@@ -53,8 +49,8 @@ prin() {
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
     [[ $dest == "$chan" || $dest == "$nick" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B> \e8\e[?25h' \
-            "$out" | wrap
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B\e8\e[?25h' \
+            "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
     printf '\r%s\n' "$out" >> "${dest//$nick/$chan}"
 }
@@ -156,7 +152,7 @@ main() {
         parse "${REPLY%%$'\r'*}" 
     done &
     
-    while status && read -erp "> "; do
+    while status && read -er; do
         cmd "$REPLY"
     done
 }
