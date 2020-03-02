@@ -144,8 +144,10 @@ prin() {
 
 cmd() {
     # Unescape some pesky tab completion blunders.
-    inp=${1//\\\#/\#}
-    set -- "${inp//\\:/:}"
+    inp=${1//\\\#/\#}   inp=${inp//\\@/@}   inp=${inp//\\:/:}
+    inp=${inp//\\\[/\[} inp=${inp//\\\]/\]} inp=${inp//\\!/!}
+    inp=${inp//\\\(/\(} inp=${inp//\\\)/\)}
+    set -- "$inp"
 
     # Save the sent input to readline's history so up/down
     # arrow work to scroll through sent history.
