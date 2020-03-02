@@ -3,13 +3,30 @@
 # birch - a simple irc client in bash
 
 clean() {
-    printf '\e[?7h\e[2J\e[;r\e[H\e[?1049l'
+    # '\e[?7h':    Re-enable line wrapping.
+    # '\e[2J':     Clear the screen.
+    # '\e[;r':     Reset the scroll area.
+    # '\e[?1049l': Swap back to the primary screen.
+    printf '\e[?7h\e[2J\e[;r\e[?1049l'
+
     rm -rf -- "$tmp"
+
+    # Kill the IRC client to also exit the child
+    # listener which runs in the background.
     kill 0
 }
 
 refresh() {
+    # The pure bash method of grabbing the terminal
+    # size in cells in unreliable. This command always
+    # works and doesn't add a tiny delay.
     read -r h w < <(stty size)
+
+    # '\e[?1049h': Swap to the alternate buffer.
+    # '\e[?7l':    Disable line wrapping.
+    # '\e[2J':     Clear the screen.
+    # '\e[3;%sr':  Set the scroll area.
+    # '\e[999H':   Move the cursor to the bottom.
     printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((h-1))"
 }
 
@@ -17,54 +34,128 @@ resize() {
     refresh
     status
 
+    # '\e7':     Save the cursor position.
+    # '\e[?25l': Hide the cursor.
+    # '\r':      Move the cursor to column 0.
+    # '\e[999B': Move the cursor to the bottom.
+    # '\e[A':    Move the cursor up a line.
     printf '\e7\e[?25l\r\e[999B\e[A'
+
+    # Somewhat hacky but a fast and portable method
+    # of wrapping lines to a specific width. 
+    #
+    # This is a little broken as 'fold' does not take 
+    # into account non-printable characters and 
+    # multi-byte characters (unicode).
+    #
+    # 'tail': Only grab the visible lines from the 
+    #         history file as an optimization for long
+    #         chat histories.
+    #
+    # 'fold': Wrap each line to match the terminal
+    #         width _minus_ 12 characters for the nick
+    #         column. 
+    #
+    # 'sed':  Add 12 characters of leading white-space
+    #         to properly wrap past the nick column.
     tail "-$h" .c | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+
+    # '\e[999H': Move the cursor back to the bottom.
+    # '\e[?25h': Unhide th cursor.
     printf '\e[999H\e[?25h'
 }
 
 status() {
+    # Each channel or "buffer" is a file in the current
+    # directory. A simple glob is used to populate the
+    # list.
+    # 
+    # The array is turned into a string with a space on
+    # either end so that we can find/replace the current
+    # buffer to add highlighting.
     cl=(*) cL=" ${cl[*]} "
 
+    # '\e7':  Save the cursor position.
+    # '\e[H': Move the cursor to 0,0.
+    # '\e[K': Clear the current line.
+    # '\e8':  Restore cursor position.
     printf '\e7\e[H\e[K%b\e8' \
         "${cL/" $chan "/ $'\e[7m'"$chan"$'\e[m' }"
 }
 
 connect() {
+    # Open an input/output network socket to the IRC server
+    # using the file descriptor '9'.
     exec 9<>"/dev/tcp/${s:=irc.freenode.net}/${P:-6667}" ||
         exit 1
 
+    # Read the channels passed on the command-line into an
+    # array (splitting on ','). Default to '#kisslinux' for
+    # very obvious reasons.
     IFS=, read -ra channels <<< "${c:=#kisslinux}"
     chan=${channels[0]}
 
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\n' \
        "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&9
 
-    printf 'JOIN %s\n' \
-        "${channels[@]}" >&9
+    # Join all passed channels as early as we can.
+    printf 'JOIN %s\n' "${channels[@]}" >&9
 }
 
 prin() {
+    # Strip escape sequences from the first word in the
+    # full message so that we can calculate how much padding
+    # to add for alignment.
     raw=${1%% *}
     raw=${raw//$'\e[1;3'?m} 
     raw=${raw//$'\e[m'}
 
+    # Generate a cursor right sequence based on the length
+    # of the above "raw" word. The nick column is a fixed
+    # width of '10' so it's simply '10 - word_len'.
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
+    # Lazy splitting or non-splitting of server messages.
+    # Let's just print them to the current buffer.
     [[ $dest == "$nick" || $dest == \* ]] && 
         dest=$chan
 
+    # Only display to the terminal if the message destination
+    # matches the currently focused buffer.
+    #
+    # '\e[?25l': Hide the cursor.
+    # '\e7':     Save cursor position.
+    # '\e[999B': Move the cursor to the bottom.
+    # '\e[A':    Move the cursor up a line.
+    # '\r':      Move the cursor to column 0.
+    # '\e8':     Restore cursor position.
+    # '\e[?25h': Unhide the cursor.
+    #
+    # The same wrapping commands are duplicated here as we
+    # run into problems if they're put into a function for
+    # whatever reason.
     [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B\e8\e[?25h' \
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' \
             "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
+    # Log the message to it's destination temporary file.
+    # This is how history, resize and buffer swaps work.
     printf '\r%s\n' "$out" >> "$dest"
 }
 
 cmd() {
+    # Save the sent input to readline's history so up/down
+    # arrow work to scroll through sent history.
     history -s "$1"
+
+    # Read the input into an array chopping off the /cmd.
+    # This makes splitting everything easier below if it
+    # is needed.
     read -r _ a args <<< "${1//\\\#/\#}"
 
+    # This is a simple function to send the input to the
+    # terminal and to the listener while saving space below.
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
@@ -83,17 +174,28 @@ cmd() {
                 *) send "PRIVMSG $chan :$1" ;;
     esac
 
+    # Clear the input line once we're done.
     printf '\r\e[2K\r'
 }
 
 parse() {
     fields=() word='' from='' whom=''
 
+    # If the first "word" in the raw IRC message contains
+    # ':', '@' or '!', split it and grab the sending user
+    # nick.
     [[ "${1%% *}" == *[:@!]* ]] && {
         from=${1%% *}
         IFS='!@' read -r whom _ <<< "${from#:}"
     }
 
+    # Read the test of the message character by character
+    # until we reach the first ':'. Once the first colon
+    # is hit, break from the loop and assume that everything
+    # after it is the message contents.
+    #
+    # Each word prior to ':' is appended to an array so that
+    # we may use each portion.
     while IFS= read -d '' -rn 1 c; do case $c in
         ' ') [[ $word ]] && fields+=("$word") word= ;;
           :) break ;;
@@ -104,14 +206,21 @@ parse() {
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     dest=${fields[1]:-$chan}
 
+    # If the message itself contains ACTION with surrounding
+    # '\001', we're dealing with '/me'. Simply set the type
+    # to 'ACTION' so we may specially deal with it below.
     [[ $mesg == *$'\001ACTION'*$'\001'* ]] &&
         fields[0]=ACTION mesg=${mesg/$'\001ACTION' }
     
+    # Color the interesting parts based on their lengths.
+    # This saves a lot of space below.
     nc=$'\e[1;3'$((${#whom}%6+1))m$whom$'\e[m'
     me=$'\e[1;3'$((${#nick}%6+1))m$nick$'\e[m'
     mc=$'\e[1;3'$((${#mesg}%6+1))m$mesg$'\e[m'
     dc=$'\e[1;3'$((${#dest}%6+1))m$dest$'\e[m'
 
+    # The first element in the fields array points to the
+    # type of message we're dealing with.
     case ${fields[0]} in
         PRIVMSG) prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" ;;
          ACTION) prin "* $nc ${mesg/$'\001'}" ;;
@@ -130,6 +239,8 @@ parse() {
 }
 
 args() {
+    # Simple argument parsing. We use 'declare' to... declare
+    # variables named after the argument they represent (-b == $b).
     while getopts :s:u:p:c:x:P:v opt; do case $opt in
         \?) printf 'birch [-s host -u nick -p pass -P port -c chan -x cmd]\n' ;;
          v) printf 'birch 0.0.1\n' ;;
@@ -143,23 +254,41 @@ main() {
     refresh
     connect
 
+    # Setup the temporary directory and create any channel
+    # files early. Change the PWD to this directory to
+    # simplify file handling later on.
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
     ln -s "$chan" .c
     for f in "${channels[@]}"; do : > "$f"; done
+
+    # Delcare an associative array to hold the nick list
+    # of each channel. The key is the channel name and the
+    # value is a string containing each nick.
     declare -A nl
 
+    # Bind 'ctrl+n' to cycle through the buffer list. As
+    # the prompt uses bash's builtin 'readline', we're
+    # able to do whatever we like with it. Neat huh?
     bind -x '"\C-n":cmd "/next"' &>/dev/null
 
+    # Set readline's history file so that we can manage
+    # its history ourselves. This should be moved to a 
+    # persistent location (TODO).
     export HISTFILE=$tmp/hist
 
     trap resize WINCH
     trap 'cmd /quit' INT
 
+    # Start the listener loop in the background so that
+    # we are able to additionally run an input loop below.
     while read -sru 9; do
         parse "${REPLY%%$'\r'*}" 
     done &
     
+    # Start the input loop which uses bash's builtin
+    # readline. This gives us neato features like a full
+    # set of keybindings, tab completion, etc, etc.
     while status && read -er; do
         cmd "$REPLY"
     done
