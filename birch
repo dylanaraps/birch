@@ -306,7 +306,7 @@ parse() {
         ;;&
 
         353) 
-            [[ $dest == "$chan" ]] || return
+            [[ -f "$dest" ]] || return
 
             read -ra ns <<< "$mesg"
             nl[chan]=" $mesg " 
