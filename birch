@@ -92,10 +92,11 @@ connect() {
         exit 1
 
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&9
+        "${U:-${nick:=${u:-$USER}}}" "$nick" "$nick" "${p-}" >&9
 
     # Join all passed channels as early as we can.
     printf 'JOIN %s\n' "${c:=#kisslinux}" >&9
+
     chan=${c/,*}
 }
 
@@ -246,7 +247,7 @@ parse() {
 args() {
     # Simple argument parsing. We use 'declare' to... declare
     # variables named after the argument they represent (-b == $b).
-    while getopts :s:u:p:c:x:P:v opt; do case $opt in
+    while getopts :s:u:U:p:c:x:P:v opt; do case $opt in
         \?) printf 'birch [-s host -u nick -p pass -P port -c chan -x cmd]\n' ;;
          v) printf 'birch 0.0.1\n' ;;
          :) printf 'Option -%s requires an argument\n' "$OPTARG" >&2 ;;
