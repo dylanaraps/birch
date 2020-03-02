@@ -75,7 +75,7 @@ status() {
     # The array is turned into a string with a space on
     # either end so that we can find/replace the current
     # buffer to add highlighting.
-    cl=([^@]*) cL=" ${cl[*]} "
+    cl=(*[^:]) cL=" ${cl[*]} "
 
     # '\e7':  Save the cursor position.
     # '\e[H': Move the cursor to 0,0.
@@ -141,7 +141,7 @@ prin() {
 cmd() {
     # Unescape some pesky tab completion blunders.
     inp=${1//\\\#/\#}
-    set -- "${inp//\\@/@}"
+    set -- "${inp//\\:/:}"
 
     # Save the sent input to readline's history so up/down
     # arrow work to scroll through sent history.
@@ -294,7 +294,7 @@ parse() {
         JOIN) 
             [[ $whom == "$nick" ]] && chan=$mesg
 
-            touch "@$whom"
+            : > "$whom:"
             dest=$mesg
             prin "--> $nc has joined $mc" 
         ;;
@@ -318,7 +318,7 @@ parse() {
         353) 
             read -ra ns <<< "$mesg"
             nl[chan]=" $mesg " 
-            touch "${ns[@]/#/@}" 
+            touch "${ns[@]/%/:}" 
         ;;&
               
         *) 
