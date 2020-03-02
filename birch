@@ -48,11 +48,14 @@ prin() {
     printf -v out '\e[%sC%s' \
         "$((${#raw}>10?0:11-${#raw}))" "$1"
 
-    [[ $dest == "$chan" || $dest == "$nick" ]] &&
+    [[ $dest == "$nick" || $dest == \* ]] && 
+        dest=$chan
+
+    [[ $dest == "$chan" ]] &&
         printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e[2B\e8\e[?25h' \
             "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
 
-    printf '\r%s\n' "$out" >> "${dest//$nick/$chan}"
+    printf '\r%s\n' "$out" >> "$dest"
 }
 
 cmd() {
@@ -115,10 +118,9 @@ parse() {
                  prin "--> $nc has joined $dc" ;;
            NICK) prin "$nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&69 ;;
-            376) cmd  "${x:-}" ;;
-            353) nl[chan]=" $mesg " ;&
-        ?[0-9]?) prin "${fields[0]} $mesg" ;;
-              *) prin "RAW $mesg"  ;;
+            376) cmd  "${x:-}" ;;&
+            353) nl[chan]=" $mesg " ;;&
+              *) prin "-- $mesg"  ;;
     esac
 }
 
@@ -138,7 +140,7 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    ln -s "$chan" .c > "./$chan" > \*
+    ln -s "$chan" .c > "./$chan"
     declare -A nl
 
     bind -x '"\C-n":cmd "/next"' &>/dev/null
