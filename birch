@@ -35,9 +35,14 @@ connect() {
         exit 1
     }
 
-    printf 'NICK %s\nUSER %s - - :%s\nPASS %s\nJOIN %s\n' \
-       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" \
-       "${chan:=${c:-#kisslinux}}" >&69
+    IFS=, read -ra channels <<< "${c:=#kisslinux}"
+    chan=${channels[0]}
+
+    printf 'NICK %s\nUSER %s - - :%s\nPASS %s\n' \
+       "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&69
+
+    printf 'JOIN %s\n' \
+        "${channels[@]}" >&69
 }
 
 prin() {
@@ -141,7 +146,8 @@ main() {
 
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    ln -s "$chan" .c > "./$chan"
+    ln -s "$chan" .c
+    for f in "${channels[@]}"; do : > "$f"; done
     declare -A nl
 
     bind -x '"\C-n":cmd "/next"' &>/dev/null
