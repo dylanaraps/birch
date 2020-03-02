@@ -58,7 +58,9 @@ resize() {
     #
     # 'sed':  Add 12 characters of leading white-space
     #         to properly wrap past the nick column.
-    tail "-$h" .c | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+    tail "-$h" .c | 
+    fold -sw "$((w-12))" | 
+    sed '2,$s|^|            |g'
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
@@ -131,8 +133,9 @@ prin() {
     # run into problems if they're put into a function for
     # whatever reason.
     [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' \
-            "$out" | fold -sw "$((w-12))" | sed '2,$s|^|            |g'
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' "$out" | 
+        fold -sw "$((w-12))" | 
+        sed '2,$s|^|            |g'
 
     # Log the message to it's destination temporary file.
     # This is how history, resize and buffer swaps work.
