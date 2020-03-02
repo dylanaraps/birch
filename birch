@@ -306,6 +306,8 @@ parse() {
         ;;&
 
         353) 
+            [[ $dest == "$chan" ]] || return
+
             read -ra ns <<< "$mesg"
             nl[chan]=" $mesg " 
             touch "${ns[@]/%/:}" 
@@ -360,6 +362,7 @@ main() {
     # its history ourselves. This should be moved to a 
     # persistent location (TODO).
     export HISTFILE=$tmp/hist
+    export HISTCONTROL=ignoreboth:erasedups
 
     trap resize WINCH
     trap 'cmd /quit' INT
