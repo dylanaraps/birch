@@ -233,7 +233,7 @@ parse() {
                  dest=$mesg; prin "--> $nc has joined $mc" ;;
            NICK) prin "--@ $nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
-    00?|25?|37?) dest=\* ;;&
+ 00?|2[56]?|37?) dest=\* ;;&
             376) cmd  "${x:-}" ;;&
             353) nl[chan]=" $mesg " ;;&
               *) prin "${fields[0]} $mesg"  ;;
