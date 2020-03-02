@@ -68,9 +68,10 @@ cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
-        '/join '*) chan=$a; [[ -f $a ]] || printf 'JOIN %s\n' "$a"
-                   send "NICKS $a"; ln -sf "$chan" .c; kill -28 0 ;;
-        '/nick '*) send "NICK $a"; nick=$a ;;
+        '/join '*) chan=$a; ln -sf "$chan" .c; [[ -f $a ]] || 
+                   printf ':%s JOIN %s\n' "$nick" "$a" >&9
+                   send "NICKS $a"; kill -28 0 ;;
+        '/nick '*) printf 'NICK %s\n' "$a" >&9; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
          '/raw '*) printf '%s\n' "$a $args" >&9 ;;
           '/me '*) send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' ;;
@@ -119,12 +120,12 @@ parse() {
                  prin "<-- $nc has quit ${dc//$dest/$chan}" ;;
            PART) prin "<-- $nc has left $dc" ;; 
            JOIN) [[ $whom == "$nick" ]] && chan=$mesg
-                 dest=$mesg; prin "--> $nc has joined $dc" ;;
+                 dest=$mesg; prin "--> $nc has joined $mc" ;;
            NICK) prin "--@ $nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
             376) cmd  "${x:-}" ;;&
             353) nl[chan]=" $mesg " ;;&
-              *) prin "-- $mesg"  ;;
+              *) prin "${fields[0]} $mesg"  ;;
     esac
 }
 
