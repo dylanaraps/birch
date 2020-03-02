@@ -89,17 +89,12 @@ connect() {
     exec 9<>"/dev/tcp/${s:=irc.freenode.net}/${P:-6667}" ||
         exit 1
 
-    # Read the channels passed on the command-line into an
-    # array (splitting on ','). Default to '#kisslinux' for
-    # very obvious reasons.
-    IFS=, read -ra channels <<< "${c:=#kisslinux}"
-    chan=${channels[0]}
-
     printf 'NICK %s\nUSER %s - - :%s\nPASS %s\n' \
        "${nick:=${u:-$USER}}" "$nick" "$nick" "${p-}" >&9
 
     # Join all passed channels as early as we can.
-    printf 'JOIN %s\n' "${channels[@]}" >&9
+    printf 'JOIN %s\n' "${c:=#kisslinux}" >&9
+    chan=${c/,*}
 }
 
 prin() {
@@ -260,6 +255,7 @@ main() {
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
     ln -s "$chan" .c
+    IFS=, read -ra channels <<< "$c"
     for f in "${channels[@]}"; do : > "$f"; done
 
     # Delcare an associative array to hold the nick list
