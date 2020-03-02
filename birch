@@ -20,7 +20,7 @@ refresh() {
     # The pure bash method of grabbing the terminal
     # size in cells in unreliable. This command always
     # works and doesn't add a tiny delay.
-    read -r h w < <(stty size)
+    read -r h _ < <(stty size)
 
     # '\e[?1049h': Swap to the alternate buffer.
     # '\e[?7l':    Disable line wrapping.
@@ -41,26 +41,10 @@ resize() {
     # '\e[A':    Move the cursor up a line.
     printf '\e7\e[?25l\r\e[999B\e[A'
 
-    # Somewhat hacky but a fast and portable method
-    # of wrapping lines to a specific width. 
-    #
-    # This is a little broken as 'fold' does not take 
-    # into account non-printable characters and 
-    # multi-byte characters (unicode).
-    #
     # 'tail': Only grab the visible lines from the 
     #         history file as an optimization for long
     #         chat histories.
-    #
-    # 'fold': Wrap each line to match the terminal
-    #         width _minus_ 12 characters for the nick
-    #         column. 
-    #
-    # 'sed':  Add 12 characters of leading white-space
-    #         to properly wrap past the nick column.
-    tail "-$h" .c 2>/dev/null | 
-    fold -sw "$((w-12))" | 
-    sed '2,$s|^|            |g'
+    tail "-$h" .c 2>/dev/null
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
@@ -128,14 +112,8 @@ prin() {
     # '\r':      Move the cursor to column 0.
     # '\e8':     Restore cursor position.
     # '\e[?25h': Unhide the cursor.
-    #
-    # The same wrapping commands are duplicated here as we
-    # run into problems if they're put into a function for
-    # whatever reason.
     [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' "$out" | 
-        fold -sw "$((w-12))" | 
-        sed '2,$s|^|            |g'
+        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' "$out"
 
     # Log the message to it's destination temporary file.
     # This is how history, resize and buffer swaps work.
@@ -245,6 +223,8 @@ parse() {
     esac; done <<< "${1/"$from"}"
 
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
+    mesg=$(fold -sw 60 <<< "$mesg")
+    mesg=${mesg//$'\n'/$'\n'            }
 
     # If the field after the typical dest is a channel, use
     # it in place of the regular field. This correctly
