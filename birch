@@ -237,7 +237,7 @@ parse() {
            QUIT) rm -f "@$whom"; [[ ${nl[chan]} == *" $whom "* ]] && 
                  prin "<-- $nc has quit ${dc//$dest/$chan}" ;;
            PART) rm -f "@$whom"; prin "<-- $nc has left $dc" ;; 
-           JOIN) [[ $whom == "$nick" ]] && chan=$mesg
+           JOIN) [[ $whom == "$nick" ]] && chan=$mesg; touch "@$whom"
                  dest=$mesg; prin "--> $nc has joined $mc" ;;
            NICK) prin "--@ $nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
