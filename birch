@@ -184,6 +184,10 @@ cmd() {
             kill -28 0 
         ;;
 
+        '/names'*) 
+            send "NAMES $chan"
+        ;;
+
         /*) 
             send "NOTICE :${1/ *} not implemented yet" 
         ;;
