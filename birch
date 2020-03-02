@@ -278,7 +278,9 @@ parse() {
 
         PART) 
             rm -f "@$whom"
-            prin "<-- $nc has left $dc" 
+
+            [[ $dest == "$chan" ]] &&
+                prin "<-- $nc has left $dc" 
         ;; 
 
         JOIN) 
