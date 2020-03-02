@@ -68,8 +68,8 @@ cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
-        '/join '*) chan=$a; [[ -f $a ]] || send "JOIN $a"; send "NICKS $a"
-                   ln -sf "$chan" .c; kill -28 0 ;;
+        '/join '*) chan=$a; [[ -f $a ]] || printf 'JOIN %s\n' "$a"
+                   send "NICKS $a"; ln -sf "$chan" .c; kill -28 0 ;;
         '/nick '*) send "NICK $a"; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
          '/raw '*) printf '%s\n' "$a $args" >&9 ;;
@@ -119,7 +119,7 @@ parse() {
                  prin "<-- $nc has quit ${dc//$dest/$chan}" ;;
            PART) prin "<-- $nc has left $dc" ;; 
            JOIN) [[ $whom == "$nick" ]] && chan=$mesg
-                 prin "--> $nc has joined $dc" ;;
+                 dest=$mesg; prin "--> $nc has joined $dc" ;;
            NICK) prin "--@ $nc is now known as $mc" ;; 
            PING) printf 'PONG%s\n' "${1##PING}" >&9 ;;
             376) cmd  "${x:-}" ;;&
