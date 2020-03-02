@@ -161,7 +161,7 @@ cmd() {
     case $1 in ""|?/?*) ;;
         '/join '*) chan=$a; ln -sf "$chan" .c; [[ -f $a ]] || 
                    printf ':%s JOIN %s\n' "$nick" "$a" >&9
-                   send "NICKS $a"; kill -28 0 ;;
+                   kill -28 0 ;;
         '/nick '*) printf 'NICK %s\n' "$a" >&9; nick=$a ;;
          '/msg '*) send "PRIVMSG $a :$args" ;;
          '/raw '*) printf '%s\n' "$a $args" >&9 ;;
