@@ -250,6 +250,7 @@ parse() {
     # Color the interesting parts based on their lengths.
     # This saves a lot of space below.
     nc=$'\e[1;3'$((${#whom}%6+1))m$whom$'\e[m'
+    pu=$'\e[1;3'$((${#whom}%6+1))m${whom:0:10}$'\e[m'
     me=$'\e[1;3'$((${#nick}%6+1))m$nick$'\e[m'
     mc=$'\e[1;3'$((${#mesg}%6+1))m$mesg$'\e[m'
     dc=$'\e[1;3'$((${#dest}%6+1))m$dest$'\e[m'
@@ -258,7 +259,7 @@ parse() {
     # type of message we're dealing with.
     case ${fields[0]} in
         PRIVMSG) 
-            prin "${nc/$whom/${whom:0:10}} ${mesg//$nick/$me}" 
+            prin "$pu ${mesg//$nick/$me}" 
         ;;
 
         ACTION) 
