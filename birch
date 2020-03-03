@@ -188,6 +188,10 @@ cmd() {
             send "NAMES $chan"
         ;;
 
+        '/topic'*)
+            send "TOPIC $chan"
+        ;;
+
         /*) 
             send "NOTICE :${1/ *} not implemented yet" 
         ;;
