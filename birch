@@ -190,7 +190,6 @@ cmd() {
             kill -28 0
         ;;
 
-
         '/names'*) 
             send "NAMES $chan"
         ;;
