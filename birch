@@ -178,14 +178,15 @@ cmd() {
             clean 
          ;;
 
-        '/next'*) 
-            chan=${cl[z = z + 1 >= ${#cl[@]} ? 0 : z + 1]} 
-            ln -sf "$chan" .c
-            kill -28 0 
-        ;;
-        
+        '/next'*)
+            chan=${cl[z = z + 1 >= ${#cl[@]} ? 0 : z + 1]}
+        ;;&
+
         '/prev'*)
             chan=${cl[z = z - 1 < 0 ? ${#cl[@]} : z - 1]}
+        ;;&
+
+        '/next'*|'/prev'*)
             ln -sf "$chan" .c
             kill -28 0
         ;;
