@@ -184,7 +184,7 @@ cmd() {
             kill -28 0 
         ;;
         
-        '/previous'*)
+        '/prev'*)
             chan=${cl[z = z - 1 < 0 ? ${#cl[@]} : z - 1]}
             ln -sf "$chan" .c
             kill -28 0
@@ -366,7 +366,7 @@ main() {
     # the prompt uses bash's builtin 'readline', we're
     # able to do whatever we like with it. Neat huh?
     bind -x '"\C-n":cmd "/next"' &>/dev/null
-    bind -x '"\C-p":cmd "/previous"' &>/dev/null
+    bind -x '"\C-p":cmd "/prev"' &>/dev/null
     bind 'TAB:menu-complete' &>/dev/null
     bind 'set match-hidden-files off' &>/dev/null
     bind 'set horizontal-scroll-mode on' &>/dev/null
