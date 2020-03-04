@@ -148,6 +148,7 @@ cmd() {
             [[ -f $a ]] || printf ':%s JOIN %s\n' "$nick" "$a" >&9
 
             kill -28 0 
+            status
         ;;
 
         '/nick '*) 
@@ -168,7 +169,7 @@ cmd() {
         ;;
 
         '/part'*) 
-            printf 'PART %s\n' "${a:=$chan}" >&9
+            printf '%s PART %s :bye bye\n' "$nick" "${a:=$chan}" >&9
             sleep 1
             rm -f "$a"
         ;;
