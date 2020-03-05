@@ -13,3 +13,46 @@ birch [-s host -u nick -p pass -P port -c chan -x cmd]
 ## Dependencies
 
 - `bash 4+`
+
+## Keybindings
+
+| combo                      | action                      |
+| -------------------------- | -------------------------- -|
+| `Ctrl` + `n`               | Next buffer                 |
+| `Ctrl` + `p`               | Prev buffer                 |
+| `Tab`                      | Complete nicks and channels |
+
+
+## Commands
+
+Channels:
+
+| command                    | action                  |
+| -------------------------- | ----------------------- |
+| `/join <channel>`          | Join a channel.         |
+| `/part <channel>`          | Leave a channel.        |
+| `/quit`                    | Quit out of birch.      |
+
+Messages:
+
+| command                    | action                  |
+| -------------------------- | ----------------------- |
+| `/msg <nick> <message>`    | Message a user.         |
+| `/me <message>`            | Send an action.         |
+
+Navigation:
+
+| command                    | action                  |
+| -------------------------- | ----------------------- |
+| `/next`                    | Next buffer.            |
+| `/prev`                    | Previous buffer.        |
+| `/<num>`                   | Buffer by number.       |
+
+Other:
+
+| command                    | action                  |
+| -------------------------- | ----------------------- |
+| `/nick <nick>`             | Change nickname.        |
+| `/names`                   | All nicks in channel.   |
+| `/topic`                   | Channel topic.          |
+| `/raw <args>`              | Send a raw IRC message. |
