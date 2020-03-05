@@ -17,7 +17,7 @@ birch [-s host -u nick -p pass -P port -c chan -x cmd]
 ## Keybindings
 
 | combo                      | action                      |
-| -------------------------- | -------------------------- -|
+| -------------------------- | --------------------------- |
 | `Ctrl` + `n`               | Next buffer                 |
 | `Ctrl` + `p`               | Prev buffer                 |
 | `Tab`                      | Complete nicks and channels |
