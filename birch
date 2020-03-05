@@ -44,7 +44,7 @@ resize() {
     # 'tail': Only grab the visible lines from the 
     #         history file as an optimization for long
     #         chat histories.
-    tail "-$h" .c 2>/dev/null
+    tail -n "$h" .c 2>/dev/null
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
