@@ -16,11 +16,12 @@ birch [-s host -u nick -p pass -P port -c chan -x cmd]
 
 ## Keybindings
 
-| combo                      | action                      |
-| -------------------------- | --------------------------- |
-| `Ctrl` + `n`               | Next buffer                 |
-| `Ctrl` + `p`               | Prev buffer                 |
-| `Tab`                      | Complete nicks and channels |
+| combo                      | action                       |
+| -------------------------- | ---------------------------- |
+| `Ctrl` + `n`               | Next buffer                  |
+| `Ctrl` + `p`               | Prev buffer                  |
+| `Tab`                      | Complete nicks and channels  |
+| ALL READLINE BINDINGS      | See: readline(3) or bash(1)  |
 
 
 ## Commands
