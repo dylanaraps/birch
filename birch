@@ -2,9 +2,6 @@
 #
 # birch - a simple irc client in bash
 
-# shopt need to be here, if not the script will get an parse error...
-shopt -s extglob
-
 clean() {
     # '\e[?7h':    Re-enable line wrapping.
     # '\e[2J':     Clear the screen.
@@ -190,11 +187,11 @@ cmd() {
             chan=${cl[z = z - 1 < 0 ? ${#cl[@]}-1 : z - 1]}
         ;;&
 
-        '/'+([0-9]))
-            chan="${cl[${1#/} >= ${#cl[@]} ? 0 : ${1#/}]}"
+        '/'[0-9]*)
+            chan="${cl[${1//[!0-9]/} >= ${#cl[@]} ? 0 : ${1//[!0-9]/}]}"
         ;;&
 
-        '/next'*|'/prev'*|'/'+([0-9]))
+        '/next'*|'/prev'*|'/'[0-9]*)
             ln -sf "$chan" .c
             kill -28 0
         ;;
