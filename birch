@@ -376,6 +376,7 @@ main() {
     # YES! Bash has loadable builtins for a myriad of
     # external commands. This includes 'sleep'!
     enable -f /usr/lib/bash/mkdir mkdir 2>/dev/null
+    enable -f /usr/lib/bash/sleep sleep 2>/dev/null
 
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
