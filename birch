@@ -44,7 +44,8 @@ resize() {
     # 'tail': Only grab the visible lines from the 
     #         history file as an optimization for long
     #         chat histories.
-    tail -n "$LINES" .c 2>/dev/null
+    [[ -s .c ]] && read -r c < .c
+    tail -n "$LINES" "${c:-$chan}" 2>/dev/null
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
@@ -100,7 +101,7 @@ prin() {
 
     # Grab the current channel a second time to ensure it
     # didn't change during the printing process.
-    chan=$(readlink .c || printf %s "$chan")
+    [[ -s .c ]] && read -r chan < .c
 
     # Only display to the terminal if the message destination
     # matches the currently focused buffer.
@@ -143,7 +144,7 @@ cmd() {
     case $1 in ""|?/?*) ;;
         '/join '*) 
             chan=$a
-            ln -sf "$chan" .c
+            printf '%s\n' "$chan" > .c
 
             [[ -f $a ]] || printf ':%s JOIN %s\n' "$nick" "$a" >&9
 
@@ -192,7 +193,7 @@ cmd() {
         ;;&
 
         '/next'*|'/prev'*|'/'[0-9]*)
-            ln -sf "$chan" .c
+            printf '%s\n' "$chan" > .c
             kill -28 0
         ;;
 
@@ -219,7 +220,7 @@ cmd() {
 
 parse() {
     fields=() word='' from='' whom=''
-    chan=$(readlink .c || printf %s "$chan")
+    [[ -s .c ]] && read -r chan < .c
 
     # If the first "word" in the raw IRC message contains
     # ':', '@' or '!', split it and grab the sending user
@@ -371,7 +372,8 @@ main() {
     # simplify file handling later on.
     mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
     cd "$tmp" || exit 1
-    ln -s "$chan" .c > \* > "$nick"
+    printf '%s\n' "$chan" > .c
+    : > \* > "$nick"
     IFS=, read -ra channels <<< "$c"
     for f in "${channels[@]}"; do : > "$f"; done
 

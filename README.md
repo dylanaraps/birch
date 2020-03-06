@@ -135,7 +135,8 @@ birch <args>
 ## Dependencies
 
 - `bash 4+`
-- POSIX compatible `fold`, `tail`, `touch`, `rm`, `ln`, `readlink`
+- POSIX compatible `fold`, `tail`, `touch`, `rm`, `ln`, `mkdir`
+- `readlink`
 
 
 ## Keybindings
