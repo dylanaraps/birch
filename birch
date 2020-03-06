@@ -232,7 +232,7 @@ parse() {
         IFS='!@' read -r whom _ <<< "${from#:}"
     }
 
-    # Read the test of the message character by character
+    # Read the rest of the message character by character
     # until we reach the first ':'. Once the first colon
     # is hit, break from the loop and assume that everything
     # after it is the message contents.
@@ -245,6 +245,9 @@ parse() {
           *) word+=$c ;;
     esac; done <<< "${1/"$from"}"
 
+    # Grab the message contents by stripping everything we've
+    # found so far above. Then word wrap each line at 60
+    # chars wide. TODO: Pure bash and unrestriced..
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
     mesg=$(fold -sw 60 <<< "$mesg")
     mesg=${mesg//$'\n'/$'\n'            }
