@@ -61,6 +61,18 @@ An IRC client written in bash.
 ## Interesting facts
 
 ```
+* Connection to the IRC server happens without external
+  utilities.
+
+  Bash support network connections via two virtual device
+  directories it "creates" in '/dev/'. 
+
+  '/dev/tcp/host/port' and '/dev/udp/host/port'.
+
+  I don't exactly know _why_ these were implemented as
+  it's a crazy feature for a shell to have. I haven't seen
+  them widely used either.
+
 * The input loop and listener loop can't communicate.
 
   Birch utilizes two loops to work. One for the input and 
