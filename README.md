@@ -179,3 +179,14 @@ Other:
 /topic                - Display channel topic.
 /raw <args>           - Send a raw IRC message.
 ```
+
+
+## Customization
+
+```
+(These are environment variables.)
+
+# Set the formatting of the tab line's selected item.
+# This defaults to reverse video.
+BIRCH_STATUS='\e[7m'
+```
