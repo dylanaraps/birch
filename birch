@@ -9,8 +9,6 @@ clean() {
     # '\e[?1049l': Swap back to the primary screen.
     printf '\e[?7h\e[2J\e[;r\e[?1049l'
 
-    rm -rf -- "$tmp"
-
     # Kill the IRC client to also exit the child
     # listener which runs in the background.
     kill 0
@@ -382,8 +380,8 @@ main() {
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
     # simplify file handling later on.
-    mkdir -p "${tmp:=${TMPDIR:-/tmp}/birch-$$}"
-    cd "$tmp" || exit 1
+    mkdir -p "${BIRCH_DIR:=${XDG_CACHE_HOME:-$HOME/.cache}/birch}"
+    cd "$_" || exit 1
     printf '%s\n' "$chan" > .c
     : > \* > "$nick"
     IFS=, read -ra channels <<< "$c"
@@ -405,9 +403,8 @@ main() {
     bind 'set enable-bracketed-paste on' &>/dev/null
 
     # Set readline's history file so that we can manage
-    # its history ourselves. This should be moved to a 
-    # persistent location (TODO).
-    export HISTFILE=$tmp/hist
+    # its history ourselves. 
+    export HISTFILE=$PWD/hist
     export HISTCONTROL=ignoreboth:erasedups
     export INPUTRC=$BIRCH_INPUTRC
 

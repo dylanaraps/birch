@@ -1,4 +1,4 @@
-# birch
+m birch
 
 An IRC client written in bash.
 
@@ -135,7 +135,7 @@ birch <args>
 ## Dependencies
 
 - `bash 4+`
-- POSIX compatible `fold`, `rm`
+- POSIX compatible `fold`
 
 
 ## Keybindings
@@ -198,4 +198,8 @@ BIRCH_STATUS='\e[7m'
 #
 # See http://man7.org/linux/man-pages/man3/readline.3.html
 BIRCH_INPUTRC=/path/to/file
+
+# Cache directory to store channel logs, etc.
+# Change this to spawn multiple clients.
+BIRCH_DIR=$XDG_CACHE_HOME/birch
 ```
