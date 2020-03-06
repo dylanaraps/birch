@@ -342,10 +342,22 @@ args() {
     # Simple argument parsing. We use 'declare' to... declare
     # variables named after the argument they represent (-b == $b).
     while getopts :s:u:U:p:c:x:P:v opt; do case $opt in
-        \?) printf 'birch [-s host -u nick -p pass -P port -c chan -x cmd]\n' ;;
-         v) printf 'birch 0.0.1\n' ;;
-         :) printf 'Option -%s requires an argument\n' "$OPTARG" >&2 ;;
-         *) declare -g "$opt=$OPTARG" 
+        \?) 
+            printf 'birch <args>\n\n'
+            printf -- '-s <host>\n'
+            printf -- '-c <channel>\n'
+            printf -- '-u <nick>\n'
+            printf -- '-p <server_password>\n'
+            printf -- '-U <server_username>\n'
+            printf -- '-P <port>\n'
+            printf -- '-x <cmd>\n\n'
+            printf -- '-h (help)\n'
+            printf -- '-v (version)\n'
+        ;;
+
+        v) printf 'birch 0.0.1\n' ;;
+        :) printf 'Option -%s requires an argument\n' "$OPTARG" >&2 ;;
+        *) declare -g "$opt=$OPTARG" 
     esac; [[ $opt =~ \?|v|: ]] && exit; done
 }
 

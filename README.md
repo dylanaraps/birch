@@ -7,7 +7,18 @@ An IRC client written in bash.
 ## Usage
 
 ```sh
-birch [-s host -u nick -p pass -P port -c chan -x cmd]
+birch <args>
+
+-s <host>
+-c <channel>
+-u <nick>
+-p <server_password>
+-U <server_username>
+-P <port>
+-x <cmd>
+
+-h (help)
+-v (version)
 ```
 
 ## Dependencies
