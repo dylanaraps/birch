@@ -297,14 +297,14 @@ parse() {
         ;;
 
         QUIT) 
-            rm -f "@$whom"
+            rm -f "$whom:"
 
             [[ ${nl[chan]} == *" $whom "* ]] && 
                  prin "<-- $nc has quit ${dc//$dest/$chan}" 
         ;;
 
         PART) 
-            rm -f "@$whom"
+            rm -f "$whom:"
 
             [[ $dest == "$chan" ]] &&
                 prin "<-- $nc has left $dc" 
