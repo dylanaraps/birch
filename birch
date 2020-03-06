@@ -25,7 +25,7 @@ refresh() {
     # '\e[2J':     Clear the screen.
     # '\e[3;%sr':  Set the scroll area.
     # '\e[999H':   Move the cursor to the bottom.
-    printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((LINES-1))"
+    printf '\e[?1049h\e[2J\e[3;%sr\e[999H' "$((LINES-1))"
 }
 
 resize() {
@@ -73,7 +73,7 @@ status() {
 }
 
 wrap() {
-    off=$((COLUMNS - 20))
+    off=$((COLUMNS - 16))
 
     while IFS= read -r line || [[ $line ]]; do
         # Skip lines which don't need to be wrapped.
@@ -94,38 +94,41 @@ wrap() {
         read -ra words  <<< "$line"
         read -ra rwords <<< "$raw"
 
-        for ((i=0; i < ${#words[@]}; i++)) {
-            len=$((len + ${#rwords[i]} + 1))
-
+        for i in "${!words[@]}"; do
             # Print the first word as-is as we truncate
             # white-space when wrapping below.
             if [[ $i == 0 ]]; then
-                printf '%s ' "${line% *}"
+                printf '%s ' "${line/ ${words[1]}*}"
 
             # If the word to be split is longer than
             # the terminal width, split it by char
             # ignoring word breakage.
             elif [[ ${#rwords[i]} -ge "$off" ]]; then
                 printf '%s\n' "${words[i]::off - len}"
-                len=
 
                 # Max IRC message length is 512 bytes,
                 # let's use a generous amount in case.
                 for ((l=off; l <= 550; l+=off)) {
-                    [[ ${words[i]:l:off} ]] && 
-                        printf '            %s\n' "${words[i]:l:off}"
+                    [[ ${words[i]:l:off} ]] || break
+                    printf '            %s\n' "${words[i]:l:off}"
                 }
 
-            elif [[ $len -le "$off" ]]; then
-                printf '%s ' "${words[i]}"
+                len=${rwords[i]:l:off} len=${#_}
 
             else
-                printf '\n            %s ' "${words[i]}"
-                len=
-            fi
-        }
+                : "$((len += ${#rwords[i]} + 1))"
 
-        len=
+                if [[ $len -le "$off" ]]; then
+                    printf '%s ' "${words[i]}"
+
+                else
+                    printf '\n            %s ' "${words[i]}"
+                    len=12
+                fi
+            fi
+        done
+
+        len=12
         printf '\n'
     done
 }
