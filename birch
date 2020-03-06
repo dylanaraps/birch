@@ -41,13 +41,13 @@ resize() {
 
     # Print the last N lines of the log file.
     {
-        [[ -s .c ]] && read -r c < .c
+        [[ -s .c ]] && read -r < .c
 
-        mapfile -tn 0 log 2>/dev/null < "${c:-$chan}"
+        mapfile -tn 0 log 2>/dev/null < "${REPLY:-$chan}"
 
         printf '%s\n' \
-            "${log[@]: -(LINES > ${#log[@]} ? ${#log[@]} : LINES)}"
-    }
+            "${log[@]: -(LINES > ${#log[@]} ? ${#log[@]} : LINES)}" 
+    } | wrap
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
@@ -72,6 +72,63 @@ status() {
         "${cL/" $chan "/ ${BIRCH_STATUS:=$'\e[7m'}"$chan"$'\e[m' }"
 }
 
+wrap() {
+    off=$((COLUMNS - 20))
+
+    while IFS= read -r line || [[ $line ]]; do
+        # Skip lines which don't need to be wrapped.
+        # This is an optmization to avoid splitting
+        # and parsing each word in the line.
+        [[ ${#line} -lt "$off" ]] && {
+            printf '%s\n' "$line"
+            continue
+        }
+
+        raw=${line//$'\e[1;3'?m}
+        raw=${raw//$'\e[m'}
+        raw=${raw//[^[:print:]]}
+
+        # Split the line into words so that we may
+        # split it accordingly. This is easier to
+        # deal with than working char by char.
+        read -ra words  <<< "$line"
+        read -ra rwords <<< "$raw"
+
+        for ((i=0; i < ${#words[@]}; i++)) {
+            len=$((len + ${#rwords[i]} + 1))
+
+            # Print the first word as-is as we truncate
+            # white-space when wrapping below.
+            if [[ $i == 0 ]]; then
+                printf '%s ' "${line% *}"
+
+            # If the word to be split is longer than
+            # the terminal width, split it by char
+            # ignoring word breakage.
+            elif [[ ${#rwords[i]} -ge "$off" ]]; then
+                printf '%s\n' "${words[i]::off - len}"
+
+                # Max IRC message length is 512 bytes,
+                # let's use a generous amount in case.
+                for ((l=off; l <= 600; l+=off)) {
+                    [[ ${words[i]:l - len:off}  ]] && 
+                        printf '%s\n' "${words[i]:l - len:off}"
+                }
+
+            elif [[ $len -le "$off" ]]; then
+                printf '%s ' "${words[i]}"
+
+            else
+                printf '\n            %s ' "${words[i]}"
+                len=
+            fi
+        }
+
+        len=
+        printf '\n'
+    done
+}
+
 connect() {
     # Open an input/output network socket to the IRC server
     # using the file descriptor '9'.
@@ -92,14 +149,14 @@ prin() {
     # full message so that we can calculate how much padding
     # to add for alignment.
     raw=${1%% *}
-    raw=${raw//$'\e[1;3'?m} 
+    raw=${raw//$'\e[1;3'?m}
     raw=${raw//$'\e[m'}
 
     # Generate a cursor right sequence based on the length
     # of the above "raw" word. The nick column is a fixed
     # width of '10' so it's simply '10 - word_len'.
-    printf -v out '\e[%sC%s' \
-        "$((${#raw}>10?0:11-${#raw}))" "$1"
+    printf -v out '%*s%s' \
+        "$((${#raw}>10?0:11-${#raw}))" "" "$1"
 
     # Grab the current channel a second time to ensure it
     # didn't change during the printing process.
@@ -115,12 +172,15 @@ prin() {
     # '\r':      Move the cursor to column 0.
     # '\e8':     Restore cursor position.
     # '\e[?25h': Unhide the cursor.
-    [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' "$out"
+    [[ $dest == "$chan" ]] && {
+        printf '\e[?25l\e7\e[999B\e[A'
+        printf '%s\n' "$out" | wrap
+        printf '\r\e8\e[?25h'
+    }
 
     # Log the message to it's destination temporary file.
     # This is how history, resize and buffer swaps work.
-    printf '\r%s\n' "$out" >> "$dest"
+    printf '%s\n' "$out" >> "$dest"
 }
 
 cmd() {
@@ -246,11 +306,8 @@ parse() {
     esac; done <<< "${1/"$from"}"
 
     # Grab the message contents by stripping everything we've
-    # found so far above. Then word wrap each line at 60
-    # chars wide. TODO: Pure bash and unrestriced..
+    # found so far above. 
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
-    mesg=$(fold -sw 60 <<< "$mesg")
-    mesg=${mesg//$'\n'/$'\n'            }
 
     # If the field after the typical dest is a channel, use
     # it in place of the regular field. This correctly
