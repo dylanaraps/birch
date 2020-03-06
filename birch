@@ -330,7 +330,10 @@ parse() {
 
             read -ra ns <<< "$mesg"
             nl[chan]=" $mesg " 
-            touch "${ns[@]/%/:}" 
+
+            for nf in "${ns[@]/%/:}"; do
+                : > "$nf"
+            done
         ;;&
               
         *) 
