@@ -13,6 +13,8 @@ birch [-s host -u nick -p pass -P port -c chan -x cmd]
 ## Dependencies
 
 - `bash 4+`
+- POSIX compatible `fold`, `tail`, `touch`, `rm`, `ln`
+
 
 ## Keybindings
 
@@ -21,7 +23,7 @@ birch [-s host -u nick -p pass -P port -c chan -x cmd]
 | `Ctrl` + `n`               | Next buffer                  |
 | `Ctrl` + `p`               | Prev buffer                  |
 | `Tab`                      | Complete nicks and channels  |
-| ALL READLINE BINDINGS      | See: readline(3) or bash(1)  |
+| ALL READLINE BINDINGS      | See: https://linux.die.net/man/3/readline  |
 
 
 ## Commands

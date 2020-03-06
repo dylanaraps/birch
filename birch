@@ -20,14 +20,14 @@ refresh() {
     # The pure bash method of grabbing the terminal
     # size in cells in unreliable. This command always
     # works and doesn't add a tiny delay.
-    read -r h _ < <(stty size)
+    shopt -s checkwinsize; (:;:)
 
     # '\e[?1049h': Swap to the alternate buffer.
     # '\e[?7l':    Disable line wrapping.
     # '\e[2J':     Clear the screen.
     # '\e[3;%sr':  Set the scroll area.
     # '\e[999H':   Move the cursor to the bottom.
-    printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((h-1))"
+    printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((LINES-1))"
 }
 
 resize() {
@@ -44,7 +44,7 @@ resize() {
     # 'tail': Only grab the visible lines from the 
     #         history file as an optimization for long
     #         chat histories.
-    tail -n "$h" .c 2>/dev/null
+    tail -n "$LINES" .c 2>/dev/null
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
