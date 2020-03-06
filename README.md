@@ -55,6 +55,11 @@ An IRC client written in bash.
 
   This should be fairly easy to fix though I need to figure out
   the best way of doing so.
+
+* No SSL (sadly).
+
+  The network connection is through bash's builtin /dev/tcp
+  feature which doesn't allow for SSL.
 ```
 
 
