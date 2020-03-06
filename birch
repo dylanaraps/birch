@@ -268,11 +268,11 @@ parse() {
     
     # Color the interesting parts based on their lengths.
     # This saves a lot of space below.
-    nc=$'\e[1;3'$((${#whom}%6+1))m$whom$'\e[m'
-    pu=$'\e[1;3'$((${#whom}%6+1))m${whom:0:10}$'\e[m'
-    me=$'\e[1;3'$((${#nick}%6+1))m$nick$'\e[m'
-    mc=$'\e[1;3'$((${#mesg}%6+1))m$mesg$'\e[m'
-    dc=$'\e[1;3'$((${#dest}%6+1))m$dest$'\e[m'
+    nc=$'\e[1;3'$(((${#whom}%6)+1))m$whom$'\e[m'
+    pu=$'\e[1;3'$(((${#whom}%6)+1))m${whom:0:10}$'\e[m'
+    me=$'\e[1;3'$(((${#nick}%6)+1))m$nick$'\e[m'
+    mc=$'\e[1;3'$(((${#mesg}%6)+1))m$mesg$'\e[m'
+    dc=$'\e[1;3'$(((${#dest}%6)+1))m$dest$'\e[m'
 
     # The first element in the fields array points to the
     # type of message we're dealing with.
