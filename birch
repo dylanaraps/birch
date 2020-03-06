@@ -279,6 +279,10 @@ parse() {
     case ${fields[0]} in
         PRIVMSG) 
             prin "$pu ${mesg//$nick/$me}" 
+
+            [[ $mesg == *$nick* ]] && 
+                type -p notify-send >/dev/null &&
+                notify-send "birch: New mention" "$whom: $mesg"
         ;;
 
         ACTION) 
