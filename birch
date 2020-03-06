@@ -46,7 +46,7 @@ resize() {
         mapfile -tn 0 log 2>/dev/null < "${REPLY:-$chan}"
 
         printf '%s\n' \
-            "${log[@]: -(LINES > ${#log[@]} ? ${#log[@]} : LINES)}" 
+            "${log[@]: -(LINES-4 > ${#log[@]} ? ${#log[@]} : LINES-4)}" 
     } | wrap
 
     # '\e[999H': Move the cursor back to the bottom.
@@ -107,12 +107,13 @@ wrap() {
             # ignoring word breakage.
             elif [[ ${#rwords[i]} -ge "$off" ]]; then
                 printf '%s\n' "${words[i]::off - len}"
+                len=
 
                 # Max IRC message length is 512 bytes,
                 # let's use a generous amount in case.
-                for ((l=off; l <= 600; l+=off)) {
-                    [[ ${words[i]:l - len:off}  ]] && 
-                        printf '%s\n' "${words[i]:l - len:off}"
+                for ((l=off; l <= 550; l+=off)) {
+                    [[ ${words[i]:l:off} ]] && 
+                        printf '            %s\n' "${words[i]:l:off}"
                 }
 
             elif [[ $len -le "$off" ]]; then
