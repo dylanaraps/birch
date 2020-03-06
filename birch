@@ -143,7 +143,7 @@ cmd() {
     # terminal and to the listener while saving space below.
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
-    case $1 in ""|?/?*) ;;
+    case $1 in "") ;;
         '/join '*) 
             chan=$a
             printf '%s\n' "$chan" > .c
