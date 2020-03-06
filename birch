@@ -80,6 +80,8 @@ wrap() {
             # If there is no more to read, end here.
             [[ ${line:l:max} ]] || break
 
+            # Don't pad the text if this is the start
+            # of the message. Only pad the wrapped lines.
             [[ $l == 0 ]] || 
                 max=$((COLUMNS - 12)) spa="            " 
 
@@ -98,12 +100,14 @@ wrap() {
             # are. This handles URLS, etc.
             [[ "$broke" == 1 ]] || ut+=${spa}${line:l:max}$'\n'
 
+            # Grab the first word from the string so we may
+            # add colors and other pretty stuff.
             from=${line::12}
             spac=${from%%[![:space:]]*}
             from=${from#"$spac"}
 
             # Do the color highlighting after we've wrapped
-            # lines.
+            # lines. Ugly but whatever.
             case $from in
                 NOTE*|'-- '|\**) ;;
 
@@ -128,7 +132,7 @@ wrap() {
             ut=${ut//"$nick"/"$nc"}
             ut=${ut//"$chan"/$'\e[1m'"$chan"$'\e[m'}
 
-            printf %s "$ut"; ut=
+            printf %s "$ut"; ut='' mc=''
         }
     done
 }
