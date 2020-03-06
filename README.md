@@ -91,6 +91,27 @@ An IRC client written in bash.
   symlink and checking its target where needed.
 
   Example: .c -> '#current_channel'
+
+* This was HARD.
+
+  Trying to make the input prompt and async listener (which
+  spits out messages to the terminal) play nice took a lot
+  of work.
+
+  As birch implements a TUI _manually_ we're dealing with bare
+  escape sequences to tie everything together.
+
+  When a message needs to be printed, the cursor must move from
+  the input prompt to the output area, print the message and
+  finally return back to the input prompt.
+
+  All of this must happen just right to ensure that this series
+  of cursor movements doesn't end up mangling the display of 
+  the interface.
+
+  Birch has gone through a lot of rewrites to get this perfect.
+  Fun fact: The older revisions read input char by char and
+  implemented a lot of readline by hand.
 ```
 
 
@@ -119,44 +140,42 @@ birch <args>
 
 ## Keybindings
 
-| combo                      | action                       |
-| -------------------------- | ---------------------------- |
-| `Ctrl` + `n`               | Next buffer                  |
-| `Ctrl` + `p`               | Prev buffer                  |
-| `Tab`                      | Complete nicks and channels  |
-| ALL READLINE BINDINGS      | See: https://linux.die.net/man/3/readline  |
+```
+Ctrl+n - Next buffer.
+Ctrl+p - Previous buffer.
+Tab    - Completion of nicks and channels.
+
+Further, all readline keybindings are available for use. See the
+readline or bash manpages for a list of these. 
+
+Keybindings to birch may also be set via a .inputrc file.
+```
 
 
 ## Commands
 
+```
 Channels:
 
-| command                    | action                  |
-| -------------------------- | ----------------------- |
-| `/join <channel>`          | Join a channel.         |
-| `/part <channel>`          | Leave a channel.        |
-| `/quit`                    | Quit out of birch.      |
+/join <channel>       - Join a channel.
+/part <channel>       - Leave a channel.
+/quit                 - Quit out of birch.
 
-Messages:
+Messages: 
 
-| command                    | action                  |
-| -------------------------- | ----------------------- |
-| `/msg <nick> <message>`    | Message a user.         |
-| `/me <message>`            | Send an action.         |
+/msg <nick> <message> - Message a user.
+/me  <message>        - Send an action.
 
 Navigation:
 
-| command                    | action                  |
-| -------------------------- | ----------------------- |
-| `/next`                    | Next buffer.            |
-| `/prev`                    | Previous buffer.        |
-| `/<num>`                   | Buffer by number.       |
+/next                 - Next buffer.
+/prev                 - Previous buffer.
+/<num>                - Buffer by number (0 indexed).
 
 Other:
 
-| command                    | action                  |
-| -------------------------- | ----------------------- |
-| `/nick <nick>`             | Change nickname.        |
-| `/names`                   | All nicks in channel.   |
-| `/topic`                   | Channel topic.          |
-| `/raw <args>`              | Send a raw IRC message. |
+/nick <nick>          - Change nickname.
+/names                - Display all nicks in channel.
+/topic                - Display channel topic.
+/raw <args>           - Send a raw IRC message.
+```
