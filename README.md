@@ -9,9 +9,9 @@ An IRC client written in bash.
 ```
 * Full power of readline for input and keybindings. 
 
-  This is thanks to bash's `read -e`. Your `~/.inputrc` is also read 
-  which allows for custom hotkeys (will later be extended to a birch 
-  specific config file).
+  This is thanks to bash's `read -e`. Birch will read a readline
+  based configuration file from the environment variable 
+  '$BIRCH_INPUTRC' which allows you to customize everything.
 
 * Tab completion of nicks and channels. 
   
