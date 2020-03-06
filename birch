@@ -41,11 +41,15 @@ resize() {
     # '\e[A':    Move the cursor up a line.
     printf '\e7\e[?25l\r\e[999B\e[A'
 
-    # 'tail': Only grab the visible lines from the 
-    #         history file as an optimization for long
-    #         chat histories.
-    [[ -s .c ]] && read -r c < .c
-    tail -n "$LINES" "${c:-$chan}" 2>/dev/null
+    # Print the last N lines of the log file.
+    {
+        [[ -s .c ]] && read -r c < .c
+
+        mapfile -tn 0 log 2>/dev/null < "${c:-$chan}"
+
+        printf '%s\n' \
+            "${log[@]: -(LINES > ${#log[@]} ? ${#log[@]} : LINES)}"
+    }
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
