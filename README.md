@@ -148,7 +148,10 @@ Tab    - Completion of nicks and channels.
 Further, all readline keybindings are available for use. See the
 readline or bash manpages for a list of these. 
 
-Keybindings to birch may also be set via a .inputrc file.
+Keybindings to birch may also be set via a .inputrc file. Which
+can be configured by setting `$BIRCH_INPUTRC`.
+
+(BIRCH_INPUTRC=/path/to/birch-inputrc birch)
 ```
 
 
@@ -189,4 +192,10 @@ Other:
 # Set the formatting of the tab line's selected item.
 # This defaults to reverse video.
 BIRCH_STATUS='\e[7m'
+
+# The path to a readline based .inputrc file to change
+# birch's input settings. 
+#
+# See http://man7.org/linux/man-pages/man3/readline.3.html
+BIRCH_INPUTRC=/path/to/file
 ```

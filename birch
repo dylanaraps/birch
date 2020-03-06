@@ -395,6 +395,7 @@ main() {
     # persistent location (TODO).
     export HISTFILE=$tmp/hist
     export HISTCONTROL=ignoreboth:erasedups
+    export INPUTRC=$BIRCH_INPUTRC
 
     trap resize WINCH
     trap 'cmd /quit' INT
