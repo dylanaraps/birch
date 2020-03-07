@@ -394,7 +394,7 @@ main() {
     IFS=, read -ra channels <<< "$c"
     for f in "${channels[@]}"; do : >> "$f"; done
 
-    # Delcare an associative array to hold the nick list
+    # Declare an associative array to hold the nick list
     # of each channel. The key is the channel name and the
     # value is a string containing each nick.
     declare -A nl
