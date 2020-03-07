@@ -72,7 +72,7 @@ status() {
 
 wrap() {
     while IFS= read -r line || [[ $line ]]; do
-        max=$COLUMNS spa='' ut=''
+        max=$COLUMNS spa=''
 
         # Loop over the string offsetting the terminal
         # width as we cycle through.
@@ -88,51 +88,17 @@ wrap() {
             # Ensure that we break on a space. Search the
             # last 15 characters for one and brea on the
             # first result.
-            for ((k=0, broke=0; k <= 25; k++)) {
+            for ((k=0, broke=0; k <= 15; k++)) {
                 [[ ${line:l:max-k} == *" " ]] || continue
 
-                ut+=${spa}${line:l:max-k}$'\n'
+                printf '%s\n' "${spa}${line:l:max-k}"
                 broke=1 l=$((l-k))
                 break
             }
 
             # If we didn't find a space, break wherever we
             # are. This handles URLS, etc.
-            [[ "$broke" == 1 ]] || ut+=${spa}${line:l:max}$'\n'
-
-            # Grab the first word from the string so we may
-            # add colors and other pretty stuff.
-            from=${line::12}
-            spac=${from%%[![:space:]]*}
-            from=${from#"$spac"}
-
-            # Do the color highlighting after we've wrapped
-            # lines. Ugly but whatever.
-            case $from in
-                NOTE*|'-- '|\**) ;;
-
-                --\>) 
-                    ut=${ut/-->/-->$'\e[1;32m'}
-                    ut=${ut/joined/$'\e[m'joined}
-                ;;
-
-                \<--) 
-                    ut=${ut/<--/<--$'\e[1;31m'}
-                    ut=${ut/left/$'\e[m'left}
-                    ut=${ut/quit/$'\e[m'quit}
-                ;;
-
-                *)
-                    mc=$'\e[1;3'$(((${#from}%6)+1))m${from}$'\e[m'
-                    ut=${ut/"${line::12}"/"${spac}${mc}"}
-                ;;
-            esac
-
-            nc=$'\e[1;3'$(((${#nick}%6)+1))m$nick$'\e[m'
-            ut=${ut//"$nick"/"$nc"}
-            ut=${ut//"$chan"/$'\e[1m'"$chan"$'\e[m'}
-
-            printf %s "$ut"; ut='' mc=''
+            [[ $broke == 1 ]] || printf '%s\n' "${spa}${line:l:max}"
         }
     done
 }
