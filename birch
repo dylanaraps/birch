@@ -45,7 +45,7 @@ resize() {
 
         printf '%s\n' \
             "${f[@]: -(LINES-4 > ${#f[@]} ? ${#f[@]} : LINES-4)}" | wrap
-    } 
+    }
 
     # '\e[999H': Move the cursor back to the bottom.
     # '\e[?25h': Unhide th cursor.
@@ -56,7 +56,7 @@ status() {
     # Each channel or "buffer" is a file in the current
     # directory. A simple glob is used to populate the
     # list.
-    # 
+    #
     # The array is turned into a string with a space on
     # either end so that we can find/replace the current
     # buffer to add highlighting.
@@ -82,8 +82,8 @@ wrap() {
 
             # Don't pad the text if this is the start
             # of the message. Only pad the wrapped lines.
-            [[ $l == 0 ]] || 
-                max=$((COLUMNS - 12)) spa="            " 
+            [[ $l == 0 ]] ||
+                max=$((COLUMNS - 12)) spa="            "
 
             # Ensure that we break on a space. Search the
             # last 15 characters for one and brea on the
@@ -176,42 +176,42 @@ cmd() {
     send() { parse "$1"; printf '%s\n' "$1" >&9; }
 
     case $1 in ""|?/?*) ;;
-        '/join '*) 
+        '/join '*)
             chan=$a
             printf '%s\n' "$chan" > .c
 
             [[ -f $a ]] || printf ':%s JOIN %s\n' "$nick" "$a" >&9
 
-            kill -28 0 
+            kill -28 0
             status
         ;;
 
-        '/nick '*) 
+        '/nick '*)
             printf 'NICK %s\n' "$a" >&9
-            nick=$a 
+            nick=$a
         ;;
 
-        '/msg '*) 
-            send "PRIVMSG $a :$args" 
+        '/msg '*)
+            send "PRIVMSG $a :$args"
         ;;
 
-        '/raw '*) 
-            printf '%s\n' "$a $args" >&9 
+        '/raw '*)
+            printf '%s\n' "$a $args" >&9
         ;;
 
-        '/me '*) 
-            send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001' 
+        '/me '*)
+            send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001'
         ;;
 
-        '/part'*) 
+        '/part'*)
             printf '%s PART %s :bye bye\n' "$nick" "${a:=$chan}" >&9
             sleep 1
             rm -f "$a"
         ;;
 
-        '/quit'*) 
+        '/quit'*)
             send "QUIT :$a $args"
-            clean 
+            clean
          ;;
 
         '/next'*)
@@ -231,7 +231,7 @@ cmd() {
             kill -28 0
         ;;
 
-        '/names'*) 
+        '/names'*)
             send "NAMES $chan"
         ;;
 
@@ -239,12 +239,12 @@ cmd() {
             send "TOPIC $chan"
         ;;
 
-        /*) 
-            send "NOTICE :${1/ *} not implemented yet" 
+        /*)
+            send "NOTICE :${1/ *} not implemented yet"
         ;;
 
-        *) 
-            send "PRIVMSG $chan :$1" 
+        *)
+            send "PRIVMSG $chan :$1"
         ;;
     esac
 
@@ -278,7 +278,7 @@ parse() {
     esac; done <<< "${1/"$from"}"
 
     # Grab the message contents by stripping everything we've
-    # found so far above. 
+    # found so far above.
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
 
     # If the field after the typical dest is a channel, use
@@ -297,77 +297,77 @@ parse() {
     # to 'ACTION' so we may specially deal with it below.
     [[ $mesg == *$'\001ACTION'*$'\001'* ]] &&
         fields[0]=ACTION mesg=${mesg/$'\001ACTION' }
-    
+
     # The first element in the fields array points to the
     # type of message we're dealing with.
     case ${fields[0]} in
-        PRIVMSG) 
-            prin "${whom:0:10} $mesg" 
+        PRIVMSG)
+            prin "${whom:0:10} $mesg"
 
-            [[ $mesg == *$nick* ]] && 
+            [[ $mesg == *$nick* ]] &&
                 type -p notify-send >/dev/null &&
                 notify-send "birch: New mention" "$whom: $mesg"
         ;;
 
-        ACTION) 
-            prin "* $whom ${mesg/$'\001'}" 
+        ACTION)
+            prin "* $whom ${mesg/$'\001'}"
         ;;
 
-        NOTICE) 
-            prin "NOTE $mesg" 
+        NOTICE)
+            prin "NOTE $mesg"
         ;;
 
-        QUIT) 
+        QUIT)
             rm -f "$whom:"
 
-            [[ ${nl[chan]} == *" $whom "* ]] && 
-                 prin "<-- $whom has quit $chan" 
+            [[ ${nl[chan]} == *" $whom "* ]] &&
+                 prin "<-- $whom has quit $chan"
         ;;
 
-        PART) 
+        PART)
             rm -f "$whom:"
 
             [[ $dest == "$chan" ]] &&
-                prin "<-- $whom has left $dest" 
-        ;; 
+                prin "<-- $whom has left $dest"
+        ;;
 
-        JOIN) 
+        JOIN)
             [[ $whom == "$nick" ]] && chan=$mesg
 
             : > "$whom:"
             dest=$mesg
-            prin "--> $whom has joined $mesg" 
+            prin "--> $whom has joined $mesg"
         ;;
 
-        NICK) 
-            prin "--@ $whom is now known as $mesg" 
-        ;; 
-
-        PING) 
-            printf 'PONG%s\n' "${1##PING}" >&9 
+        NICK)
+            prin "--@ $whom is now known as $mesg"
         ;;
 
-        00?|2[56]?|37?) 
-            dest=\* 
+        PING)
+            printf 'PONG%s\n' "${1##PING}" >&9
+        ;;
+
+        00?|2[56]?|37?)
+            dest=\*
         ;;&
 
-        376) 
-            cmd  "${x:-}" 
+        376)
+            cmd  "${x:-}"
         ;;&
 
-        353) 
+        353)
             [[ -f "$dest" ]] || return
 
             read -ra ns <<< "$mesg"
-            nl[chan]=" $mesg " 
+            nl[chan]=" $mesg "
 
             for nf in "${ns[@]/%/:}"; do
                 : > "$nf"
             done
         ;;&
-              
-        *) 
-            prin "-- $mesg"  
+
+        *)
+            prin "-- $mesg"
         ;;
     esac
 }
@@ -376,7 +376,7 @@ args() {
     # Simple argument parsing. We use 'declare' to... declare
     # variables named after the argument they represent (-b == $b).
     while getopts :s:u:U:p:c:x:P:v opt; do case $opt in
-        \?) 
+        \?)
             printf 'birch <args>\n\n'
             printf -- '-s <host>\n'
             printf -- '-c <channel>\n'
@@ -391,7 +391,7 @@ args() {
 
         v) printf 'birch 0.0.1\n' ;;
         :) printf 'Option -%s requires an argument\n' "$OPTARG" >&2 ;;
-        *) declare -g "$opt=$OPTARG" 
+        *) declare -g "$opt=$OPTARG"
     esac; [[ $opt =~ \?|v|: ]] && exit; done
 }
 
@@ -437,7 +437,7 @@ main() {
     bind 'set enable-bracketed-paste on' &>/dev/null
 
     # Set readline's history file so that we can manage
-    # its history ourselves. 
+    # its history ourselves.
     export HISTFILE=$PWD/hist
     export HISTCONTROL=ignoreboth:erasedups
     export INPUTRC=$BIRCH_INPUTRC
@@ -448,9 +448,9 @@ main() {
     # Start the listener loop in the background so that
     # we are able to additionally run an input loop below.
     while read -sru 9; do
-        parse "${REPLY%%$'\r'*}" 
+        parse "${REPLY%%$'\r'*}"
     done &
-    
+
     # Start the input loop which uses bash's builtin
     # readline. This gives us neato features like a full
     # set of keybindings, tab completion, etc, etc.
