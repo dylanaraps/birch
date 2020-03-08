@@ -9,6 +9,8 @@ clean() {
     # '\e[?1049l': Swap back to the primary screen.
     printf '\e[?7h\e[2J\e[;r\e[?1049l'
 
+    rm -rf "$TMPDIR/birch-$$"
+
     # Kill the IRC client to also exit the child
     # listener which runs in the background.
     kill 0
@@ -388,7 +390,7 @@ main() {
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
     # simplify file handling later on.
-    mkdir -p "${BIRCH_DIR:=${XDG_CACHE_HOME:-$HOME/.cache}/birch}"
+    mkdir -p "${TMPDIR:=/tmp}/birch-$$}"
     cd "$_" || exit 1
     printf '%s\n' "$chan" > .c
     IFS=, read -ra channels <<< "$c"
