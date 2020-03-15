@@ -285,7 +285,7 @@ parse() {
         PRIVMSG)
             prin "$pu ${mesg//$nick/$me}"
 
-            [[ $mesg == *$nick* ]] &&
+            [[ $dest == *$nick* || $mesg == *$nick* ]] &&
                 type -p notify-send >/dev/null &&
                 notify-send "birch: New mention" "$whom: $mesg"
         ;;
