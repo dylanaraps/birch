@@ -179,6 +179,10 @@ cmd() {
             rm -f "$a"
         ;;
 
+        '/shrug'*)
+            send "PRIVMSG $chan :¯\_(ツ)_/¯"
+        ;;
+
         '/quit'*)
             send "QUIT :$a $args"
             clean
@@ -390,7 +394,7 @@ main() {
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
     # simplify file handling later on.
-    mkdir -p "${TMPDIR:=/tmp}/birch-$$}"
+    mkdir -p "${TMPDIR:=/tmp}/birch-$$"
     cd "$_" || exit 1
     printf '%s\n' "$chan" > .c
     IFS=, read -ra channels <<< "$c"
