@@ -213,6 +213,14 @@ cmd() {
             send "TOPIC $chan"
         ;;
 
+        '/away '*)
+            send "AWAY :$a $args"
+        ;;
+
+        '/away'*)
+            send "AWAY"
+        ;;
+
         /*)
             send "NOTICE :${1/ *} not implemented yet"
         ;;
@@ -330,6 +338,11 @@ parse() {
 
         PING)
             printf 'PONG%s\n' "${1##PING}" >&9
+        ;;
+
+        AWAY)
+            dest=$nick
+            prin "-- Away status: $mesg"
         ;;
 
         00?|2[56]?|37?)

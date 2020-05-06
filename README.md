@@ -185,6 +185,7 @@ Other:
 /nick <nick>          - Change nickname.
 /names                - Display all nicks in channel.
 /topic                - Display channel topic.
+/away <message>       - Set afk message.
 /raw <args>           - Send a raw IRC message.
 ```
 
