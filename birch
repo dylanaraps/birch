@@ -3,11 +3,10 @@
 # birch - a simple irc client in bash
 
 clean() {
-    # '\e[?7h':    Re-enable line wrapping.
     # '\e[2J':     Clear the screen.
     # '\e[;r':     Reset the scroll area.
     # '\e[?1049l': Swap back to the primary screen.
-    printf '\e[?7h\e[2J\e[;r\e[?1049l'
+    printf '\e[2J\e[;r\e[?1049l'
 
     rm -rf "$TMPDIR/birch-$$"
 
@@ -23,11 +22,10 @@ refresh() {
     shopt -s checkwinsize; (:;:)
 
     # '\e[?1049h': Swap to the alternate buffer.
-    # '\e[?7l':    Disable line wrapping.
     # '\e[2J':     Clear the screen.
     # '\e[3;%sr':  Set the scroll area.
     # '\e[999H':   Move the cursor to the bottom.
-    printf '\e[?1049h\e[?7l\e[2J\e[3;%sr\e[999H' "$((LINES-1))"
+    printf '\e[?1049h\e[2J\e[3;%sr\e[999H' "$((LINES-1))"
 }
 
 resize() {
@@ -43,12 +41,12 @@ resize() {
 
     # Print the last N lines of the log file.
     {
-        [[ -s .c ]] && read -r c < .c
+        [[ -s .c ]] && read -r < .c
 
-        mapfile -tn 0 log 2>/dev/null < "${c:-$chan}"
+        mapfile -tn 0 f 2>/dev/null < "${REPLY:-$chan}"
 
         printf '%s\n' \
-            "${log[@]: -(LINES > ${#log[@]} ? ${#log[@]} : LINES)}"
+            "${f[@]: -(LINES-4 > ${#f[@]} ? ${#f[@]} : LINES-4)}" | wrap
     }
 
     # '\e[999H': Move the cursor back to the bottom.
@@ -74,6 +72,39 @@ status() {
         "${cL/" $chan "/ ${BIRCH_STATUS:=$'\e[7m'}"$chan"$'\e[m' }"
 }
 
+wrap() {
+    while IFS= read -r line || [[ $line ]]; do
+        max=$COLUMNS spa=''
+
+        # Loop over the string offsetting the terminal
+        # width as we cycle through.
+        for ((l=0; l <= 600; l+=max)) {
+            # If there is no more to read, end here.
+            [[ ${line:l:max} ]] || break
+
+            # Don't pad the text if this is the start
+            # of the message. Only pad the wrapped lines.
+            [[ $l == 0 ]] ||
+                max=$((COLUMNS - 12)) spa="            "
+
+            # Ensure that we break on a space. Search the
+            # last 15 characters for one and brea on the
+            # first result.
+            for ((k=0, broke=0; k <= 15; k++)) {
+                [[ ${line:l:max-k} == *" " ]] || continue
+
+                printf '%s\n' "${spa}${line:l:max-k}"
+                broke=1 l=$((l-k))
+                break
+            }
+
+            # If we didn't find a space, break wherever we
+            # are. This handles URLS, etc.
+            [[ $broke == 1 ]] || printf '%s\n' "${spa}${line:l:max}"
+        }
+    done
+}
+
 connect() {
     # Open an input/output network socket to the IRC server
     # using the file descriptor '9'.
@@ -93,15 +124,13 @@ prin() {
     # Strip escape sequences from the first word in the
     # full message so that we can calculate how much padding
     # to add for alignment.
-    raw=${1%% *}
-    raw=${raw//$'\e[1;3'?m}
-    raw=${raw//$'\e[m'}
+    : "${1%% *}"
 
     # Generate a cursor right sequence based on the length
     # of the above "raw" word. The nick column is a fixed
     # width of '10' so it's simply '10 - word_len'.
-    printf -v out '\e[%sC%s' \
-        "$((${#raw}>10?0:11-${#raw}))" "$1"
+    printf -v out '%*s%s' \
+        "$((${#_}>10?0:11-${#_}))" "" "$1"
 
     # Grab the current channel a second time to ensure it
     # didn't change during the printing process.
@@ -117,12 +146,15 @@ prin() {
     # '\r':      Move the cursor to column 0.
     # '\e8':     Restore cursor position.
     # '\e[?25h': Unhide the cursor.
-    [[ $dest == "$chan" ]] &&
-        printf '\e[?25l\e7\e[999B\e[A\r%s\n\r\e8\e[?25h' "$out"
+    [[ $dest == "$chan" ]] && {
+        printf '\e[?25l\e7\e[999B\e[A'
+        printf '%s\n' "$out" | wrap
+        printf '\r\e8\e[?25h'
+    }
 
     # Log the message to it's destination temporary file.
     # This is how history, resize and buffer swaps work.
-    printf '\r%s\n' "$out" >> "$dest"
+    printf '%s\n' "$out" >> "$dest"
 }
 
 cmd() {
@@ -260,11 +292,8 @@ parse() {
     esac; done <<< "${1/"$from"}"
 
     # Grab the message contents by stripping everything we've
-    # found so far above. Then word wrap each line at 60
-    # chars wide. TODO: Pure bash and unrestriced..
+    # found so far above.
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
-    mesg=$(fold -sw 60 <<< "$mesg")
-    mesg=${mesg//$'\n'/$'\n'            }
 
     # If the field after the typical dest is a channel, use
     # it in place of the regular field. This correctly
@@ -283,19 +312,11 @@ parse() {
     [[ $mesg == *$'\001ACTION'*$'\001'* ]] &&
         fields[0]=ACTION mesg=${mesg/$'\001ACTION' }
 
-    # Color the interesting parts based on their lengths.
-    # This saves a lot of space below.
-    nc=$'\e[1;3'$(((${#whom}%6)+1))m$whom$'\e[m'
-    pu=$'\e[1;3'$(((${#whom}%6)+1))m${whom:0:10}$'\e[m'
-    me=$'\e[1;3'$(((${#nick}%6)+1))m$nick$'\e[m'
-    mc=$'\e[1;3'$(((${#mesg}%6)+1))m$mesg$'\e[m'
-    dc=$'\e[1;3'$(((${#dest}%6)+1))m$dest$'\e[m'
-
     # The first element in the fields array points to the
     # type of message we're dealing with.
     case ${fields[0]} in
         PRIVMSG)
-            prin "$pu ${mesg//$nick/$me}"
+            prin "${whom:0:10} $mesg"
 
             [[ $dest == *$nick* || $mesg == *$nick* ]] &&
                 type -p notify-send >/dev/null &&
@@ -303,7 +324,7 @@ parse() {
         ;;
 
         ACTION)
-            prin "* $nc ${mesg/$'\001'}"
+            prin "* $whom ${mesg/$'\001'}"
         ;;
 
         NOTICE)
@@ -314,14 +335,14 @@ parse() {
             rm -f "$whom:"
 
             [[ ${nl[chan]} == *" $whom "* ]] &&
-                 prin "<-- $nc has quit ${dc//$dest/$chan}"
+                 prin "<-- $whom has quit $chan"
         ;;
 
         PART)
             rm -f "$whom:"
 
             [[ $dest == "$chan" ]] &&
-                prin "<-- $nc has left $dc"
+                prin "<-- $whom has left $dest"
         ;;
 
         JOIN)
@@ -329,11 +350,11 @@ parse() {
 
             : > "$whom:"
             dest=$mesg
-            prin "--> $nc has joined $mc"
+            prin "--> $whom has joined $mesg"
         ;;
 
         NICK)
-            prin "--@ $nc is now known as $mc"
+            prin "--@ $whom is now known as $mesg"
         ;;
 
         PING)
@@ -397,6 +418,12 @@ main() {
     args "$@"
     refresh
     connect
+
+    # Speed things up a little by disabling all unicode
+    # usage in builtins. This has no affect on the display
+    # of unicode, just the unicode-specific code in bash.
+    export LC_ALL=C
+    export LANG=C
 
     # Enable loadable bash builtins if available.
     # YES! Bash has loadable builtins for a myriad of
