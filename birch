@@ -263,7 +263,7 @@ parse() {
     # found so far above. Then word wrap each line at 60
     # chars wide. TODO: Pure bash and unrestriced..
     mesg=${1/"${from:+$from }${fields[*]} "} mesg=${mesg#:}
-    mesg=$(fold -sw 60 <<< "$mesg")
+    mesg=$(fold -sw "${BIRCH_COLUMNS:=60}" <<< "$mesg")
     mesg=${mesg//$'\n'/$'\n'            }
 
     # If the field after the typical dest is a channel, use
