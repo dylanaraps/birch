@@ -296,18 +296,32 @@ parse() {
     case ${fields[0]} in
         PRIVMSG)
             prin "$pu ${mesg//$nick/$me}"
-
-            [[ $dest == *$nick* || $mesg == *$nick* ]] &&
-                type -p notify-send >/dev/null &&
-                notify-send "birch: New mention" "$whom: $mesg"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_privmsg_ ]]; then
+                    ${i} "$pu" "$nick" "$whom" "$mesg"
+                fi
+            done
         ;;
 
         ACTION)
             prin "* $nc ${mesg/$'\001'}"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_action ]]; then
+                    ${i} "$nc" "$mesg"
+                fi
+            done
         ;;
 
         NOTICE)
             prin "NOTE $mesg"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_notice ]]; then
+                    ${i} "$mesg"
+                fi
+            done
         ;;
 
         QUIT)
@@ -315,6 +329,12 @@ parse() {
 
             [[ ${nl[chan]} == *" $whom "* ]] &&
                  prin "<-- $nc has quit ${dc//$dest/$chan}"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_quit ]]; then
+                    ${i} "$whom"
+                fi
+            done
         ;;
 
         PART)
@@ -322,6 +342,12 @@ parse() {
 
             [[ $dest == "$chan" ]] &&
                 prin "<-- $nc has left $dc"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_part ]]; then
+                    ${i} "$whom"
+                fi
+            done
         ;;
 
         JOIN)
@@ -330,14 +356,32 @@ parse() {
             : > "$whom:"
             dest=$mesg
             prin "--> $nc has joined $mc"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_join ]]; then
+                    ${i} "$nc" "$mc"
+                fi
+            done
         ;;
 
         NICK)
             prin "--@ $nc is now known as $mc"
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_nick ]]; then
+                    ${i} "$nc" "$mc"
+                fi
+            done
         ;;
 
         PING)
             printf 'PONG%s\n' "${1##PING}" >&9
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_ping ]]; then
+                    ${i}
+                fi
+            done
         ;;
 
         AWAY)
@@ -361,6 +405,12 @@ parse() {
 
             for nf in "${ns[@]/%/:}"; do
                 : > "$nf"
+            done
+            # Call available plugins.
+            for i in "${plugins[@]}" ; do
+                if [[ "$i" =~ ^plugin_away ]]; then
+                    ${i} "$dest" "$mesg"
+                fi
             done
         ;;&
 
@@ -404,6 +454,27 @@ main() {
     enable -f /usr/lib/bash/mkdir mkdir 2>/dev/null
     enable -f /usr/lib/bash/sleep sleep 2>/dev/null
 
+    # Load any available plugins from plugins directory in current path or /usr/share/birch/plugins
+    if [[ -d "${BASH_SOURCE[0]%/*}/plugins" ]]; then
+        for f in "${BASH_SOURCE[0]%/*}/plugins/"*.sh ; do
+            source "$f"
+        done
+    fi
+    if [[ -d "/usr/share/birch/plugins" ]]; then
+        for f in "/usr/share/birch/plugins/"*.sh ; do
+            source "$f"
+        done
+    fi
+    # Get a list of all functions available.
+    mapfile -t plugins < <(declare -F)
+    # Loop through the function names and strip away stuff that is not needed.
+    for i in "${!plugins[@]}" ; do
+        plugins[i]="${plugins[i]#*f }"
+        # Remove functions that do not start with plugin_
+        if ! [[ "${plugins[i]}" =~ ^plugin_ ]]; then
+            unset plugins[i]
+        fi
+    done
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
     # simplify file handling later on.
@@ -435,6 +506,7 @@ main() {
 
     trap resize WINCH
     trap 'cmd /quit' INT
+    trap clean EXIT
 
     # Start the listener loop in the background so that
     # we are able to additionally run an input loop below.
