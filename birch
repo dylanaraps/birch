@@ -154,23 +154,28 @@ cmd() {
 
             kill -28 0
             status
+            call_plugins "${1/\//slash_}" "$nick" "$chan"
         ;;
 
         '/nick '*)
             printf 'NICK %s\n' "$a" >&9
             nick=$a
+            call_plugins "${1/\//slash_}" "$nick"
         ;;
 
         '/msg '*)
             send "PRIVMSG $a :$args"
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/raw '*)
             printf '%s\n' "$a $args" >&9
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/me '*)
             send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001'
+            call_plugins "${1/\//slash_}" "$chan" "$a" "$args"
         ;;
 
         '/part'*)
@@ -190,10 +195,12 @@ cmd() {
 
         '/next'*)
             chan=${cl[z = z + 1 >= ${#cl[@]} ? 0 : z + 1]}
+            call_plugins "${1/\//slash_}" "$chan"
         ;;&
 
         '/prev'*)
             chan=${cl[z = z - 1 < 0 ? ${#cl[@]}-1 : z - 1]}
+            call_plugins "${1/\//slash_}" "$chan"
         ;;&
 
         '/'[0-9]*)
@@ -207,22 +214,30 @@ cmd() {
 
         '/names'*)
             send "NAMES $chan"
+            call_plugins "${1/\//slash_}" "$chan"
         ;;
 
         '/topic'*)
             send "TOPIC $chan"
+            call_plugins "${1/\//slash_}" "$chan"
         ;;
 
         '/away '*)
             send "AWAY :$a $args"
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/away'*)
             send "AWAY"
+            call_plugins "${1/\//slash_}"
         ;;
 
         /*)
-            send "NOTICE :${1/ *} not implemented yet"
+            if LC_ALL=C type "${1/\//slash_}" 2> /dev/null | grep -q "${1/\//slash_} is a function" ; then
+                call_plugins "${1/\//slash_}" "$@"
+            else
+                send "NOTICE :${1/ *} not implemented yet"
+            fi
         ;;
 
         *)
