@@ -296,32 +296,17 @@ parse() {
     case ${fields[0]} in
         PRIVMSG)
             prin "$pu ${mesg//$nick/$me}"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_privmsg_ ]]; then
-                    ${i} "$pu" "$nick" "$whom" "$mesg"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$chan" "$nick" "$whom" "$mesg"
         ;;
 
         ACTION)
             prin "* $nc ${mesg/$'\001'}"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_action ]]; then
-                    ${i} "$nc" "$mesg"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$nc" "$mesg"
         ;;
 
         NOTICE)
             prin "NOTE $mesg"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_notice ]]; then
-                    ${i} "$mesg"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$mesg"
         ;;
 
         QUIT)
@@ -329,12 +314,7 @@ parse() {
 
             [[ ${nl[chan]} == *" $whom "* ]] &&
                  prin "<-- $nc has quit ${dc//$dest/$chan}"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_quit ]]; then
-                    ${i} "$whom"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$whom"
         ;;
 
         PART)
@@ -342,12 +322,7 @@ parse() {
 
             [[ $dest == "$chan" ]] &&
                 prin "<-- $nc has left $dc"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_part ]]; then
-                    ${i} "$whom"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$whom" "$dc"
         ;;
 
         JOIN)
@@ -356,32 +331,17 @@ parse() {
             : > "$whom:"
             dest=$mesg
             prin "--> $nc has joined $mc"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_join ]]; then
-                    ${i} "$nc" "$mc"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$nc" "$mc"
         ;;
 
         NICK)
             prin "--@ $nc is now known as $mc"
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_nick ]]; then
-                    ${i} "$nc" "$mc"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$nc" "$mc"
         ;;
 
         PING)
             printf 'PONG%s\n' "${1##PING}" >&9
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_ping ]]; then
-                    ${i}
-                fi
-            done
+            call_plugins "${fields[0],,}"
         ;;
 
         AWAY)
@@ -406,12 +366,7 @@ parse() {
             for nf in "${ns[@]/%/:}"; do
                 : > "$nf"
             done
-            # Call available plugins.
-            for i in "${plugins[@]}" ; do
-                if [[ "$i" =~ ^plugin_away ]]; then
-                    ${i} "$dest" "$mesg"
-                fi
-            done
+            call_plugins "${fields[0],,}" "$dest" "$mesg"
         ;;&
 
         *)
@@ -519,6 +474,16 @@ main() {
     # set of keybindings, tab completion, etc, etc.
     while status && read -er; do
         cmd "$REPLY"
+    done
+}
+
+call_plugins() {
+    local functionName="$1"
+    shift
+    for i in "${plugins[@]}" ; do
+        if [[ "$i" =~ ^plugin_${functionName}_ ]]; then
+            ${i} "$@"
+        fi
     done
 }
 
