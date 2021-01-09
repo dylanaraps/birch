@@ -233,8 +233,10 @@ cmd() {
         ;;
 
         /*)
-            if LC_ALL=C type "plugin_${1/\//slash_}" 2> /dev/null | grep -q "plugin_${1/\//slash_} is a function" ; then
-                call_plugins "${1/\//slash_}" "$chan" "$args"
+            func="${1%% *}"
+            args="${1#* }"
+            if LC_ALL=C type "plugin_${func/\//slash_}" 2> /dev/null | grep -q "plugin_${func/\//slash_} is a function" ; then
+                call_plugins "${func/\//slash_}" "$chan" "$args"
             else
                 send "NOTICE :${1/ *} not implemented yet"
             fi
