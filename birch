@@ -175,7 +175,7 @@ cmd() {
 
         '/me '*)
             send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001'
-            call_plugins "${1/\//slash_}" "$chan" "$a" "$args"
+            call_plugins "${1/\//slash_}" "$chan" "$args"
         ;;
 
         '/part'*)
@@ -233,8 +233,8 @@ cmd() {
         ;;
 
         /*)
-            if LC_ALL=C type "${1/\//slash_}" 2> /dev/null | grep -q "${1/\//slash_} is a function" ; then
-                call_plugins "${1/\//slash_}" "$@"
+            if LC_ALL=C type "plugin_${1/\//slash_}" 2> /dev/null | grep -q "plugin_${1/\//slash_} is a function" ; then
+                call_plugins "${1/\//slash_}" "$chan" "$args"
             else
                 send "NOTICE :${1/ *} not implemented yet"
             fi
@@ -496,7 +496,7 @@ call_plugins() {
     local functionName="$1"
     shift
     for i in "${plugins[@]}" ; do
-        if [[ "$i" =~ ^plugin_${functionName}_ ]]; then
+        if [[ "$i" =~ ^plugin_${functionName} ]]; then
             ${i} "$@"
         fi
     done
