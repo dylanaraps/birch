@@ -154,23 +154,28 @@ cmd() {
 
             kill -28 0
             status
+            call_plugins "${1/\//slash_}" "$nick" "$chan"
         ;;
 
         '/nick '*)
             printf 'NICK %s\n' "$a" >&9
             nick=$a
+            call_plugins "${1/\//slash_}" "$nick"
         ;;
 
         '/msg '*)
             send "PRIVMSG $a :$args"
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/raw '*)
             printf '%s\n' "$a $args" >&9
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/me '*)
             send "PRIVMSG $chan :"$'\001'"ACTION $a $args"$'\001'
+            call_plugins "${1/\//slash_}" "$chan" "$args"
         ;;
 
         '/part'*)
@@ -190,10 +195,12 @@ cmd() {
 
         '/next'*)
             chan=${cl[z = z + 1 >= ${#cl[@]} ? 0 : z + 1]}
+            call_plugins "${1/\//slash_}" "$chan"
         ;;&
 
         '/prev'*)
             chan=${cl[z = z - 1 < 0 ? ${#cl[@]}-1 : z - 1]}
+            call_plugins "${1/\//slash_}" "$chan"
         ;;&
 
         '/'[0-9]*)
@@ -207,22 +214,32 @@ cmd() {
 
         '/names'*)
             send "NAMES $chan"
+            call_plugins "${1/\//slash_}" "$chan"
         ;;
 
         '/topic'*)
             send "TOPIC $chan"
+            call_plugins "${1/\//slash_}" "$chan"
         ;;
 
         '/away '*)
             send "AWAY :$a $args"
+            call_plugins "${1/\//slash_}" "$a" "$args"
         ;;
 
         '/away'*)
             send "AWAY"
+            call_plugins "${1/\//slash_}"
         ;;
 
         /*)
-            send "NOTICE :${1/ *} not implemented yet"
+            func="${1%% *}"
+            args="${1#* }"
+            if LC_ALL=C type "plugin_${func/\//slash_}" 2> /dev/null | grep -q "plugin_${func/\//slash_} is a function" ; then
+                call_plugins "${func/\//slash_}" "$chan" "$args"
+            else
+                send "NOTICE :${1/ *} not implemented yet"
+            fi
         ;;
 
         *)
@@ -296,18 +313,17 @@ parse() {
     case ${fields[0]} in
         PRIVMSG)
             prin "$pu ${mesg//$nick/$me}"
-
-            [[ $dest == *$nick* || $mesg == *$nick* ]] &&
-                type -p notify-send >/dev/null &&
-                notify-send "birch: New mention" "$whom: $mesg"
+            call_plugins "${fields[0],,}" "$chan" "$nick" "$whom" "$mesg"
         ;;
 
         ACTION)
             prin "* $nc ${mesg/$'\001'}"
+            call_plugins "${fields[0],,}" "$nc" "$mesg"
         ;;
 
         NOTICE)
             prin "NOTE $mesg"
+            call_plugins "${fields[0],,}" "$mesg"
         ;;
 
         QUIT)
@@ -315,6 +331,7 @@ parse() {
 
             [[ ${nl[chan]} == *" $whom "* ]] &&
                  prin "<-- $nc has quit ${dc//$dest/$chan}"
+            call_plugins "${fields[0],,}" "$whom"
         ;;
 
         PART)
@@ -322,6 +339,7 @@ parse() {
 
             [[ $dest == "$chan" ]] &&
                 prin "<-- $nc has left $dc"
+            call_plugins "${fields[0],,}" "$whom" "$dc"
         ;;
 
         JOIN)
@@ -330,14 +348,17 @@ parse() {
             : > "$whom:"
             dest=$mesg
             prin "--> $nc has joined $mc"
+            call_plugins "${fields[0],,}" "$nc" "$mc"
         ;;
 
         NICK)
             prin "--@ $nc is now known as $mc"
+            call_plugins "${fields[0],,}" "$nc" "$mc"
         ;;
 
         PING)
             printf 'PONG%s\n' "${1##PING}" >&9
+            call_plugins "${fields[0],,}"
         ;;
 
         AWAY)
@@ -362,6 +383,7 @@ parse() {
             for nf in "${ns[@]/%/:}"; do
                 : > "$nf"
             done
+            call_plugins "${fields[0],,}" "$dest" "$mesg"
         ;;&
 
         *)
@@ -404,6 +426,27 @@ main() {
     enable -f /usr/lib/bash/mkdir mkdir 2>/dev/null
     enable -f /usr/lib/bash/sleep sleep 2>/dev/null
 
+    # Load any available plugins from plugins directory in current path or /usr/share/birch/plugins
+    if [[ -d "${BASH_SOURCE[0]%/*}/plugins" ]]; then
+        for f in "${BASH_SOURCE[0]%/*}/plugins/"*.sh ; do
+            source "$f"
+        done
+    fi
+    if [[ -d "/usr/share/birch/plugins" ]]; then
+        for f in "/usr/share/birch/plugins/"*.sh ; do
+            source "$f"
+        done
+    fi
+    # Get a list of all functions available.
+    mapfile -t plugins < <(declare -F)
+    # Loop through the function names and strip away stuff that is not needed.
+    for i in "${!plugins[@]}" ; do
+        plugins[i]="${plugins[i]#*f }"
+        # Remove functions that do not start with plugin_
+        if ! [[ "${plugins[i]}" =~ ^plugin_ ]]; then
+            unset plugins[i]
+        fi
+    done
     # Setup the temporary directory and create any channel
     # files early. Change the PWD to this directory to
     # simplify file handling later on.
@@ -435,6 +478,7 @@ main() {
 
     trap resize WINCH
     trap 'cmd /quit' INT
+    trap clean EXIT
 
     # Start the listener loop in the background so that
     # we are able to additionally run an input loop below.
@@ -447,6 +491,16 @@ main() {
     # set of keybindings, tab completion, etc, etc.
     while status && read -er; do
         cmd "$REPLY"
+    done
+}
+
+call_plugins() {
+    local functionName="$1"
+    shift
+    for i in "${plugins[@]}" ; do
+        if [[ "$i" =~ ^plugin_${functionName} ]]; then
+            ${i} "$@"
+        fi
     done
 }
 
